@@ -1,10 +1,52 @@
-const V='oradores-v2';
-const FILES=['./','index.html','manifest.json','xlsx.full.min.js','icon-192.png','icon-512.png','icon-maskable-512.png'];
-self.addEventListener('install',e=>{e.waitUntil(caches.open(V).then(c=>c.addAll(FILES)).then(()=>self.skipWaiting()))});
-self.addEventListener('activate',e=>{e.waitUntil(caches.keys().then(k=>Promise.all(k.filter(x=>x!==V).map(x=>caches.delete(x)))).then(()=>self.clients.claim()))});
-self.addEventListener('fetch',e=>{
-  if(e.request.method!=='GET')return;
-  const doc=e.request.mode==='navigate'||e.request.destination==='document';
-  if(doc){e.respondWith(fetch(e.request).then(r=>{const c=r.clone();caches.open(V).then(x=>x.put('index.html',c));return r}).catch(()=>caches.match('index.html')));return}
-  e.respondWith(caches.match(e.request,{ignoreSearch:true}).then(r=>r||fetch(e.request).then(res=>{const c=res.clone();caches.open(V).then(x=>x.put(e.request,c));return res})));
+const V = 'oradores-v2';
+
+const FILES = [
+  './',
+  'index.html',
+  'manifest.json',
+  'build.js',
+  'core.js',
+  'style.css',
+  'ui.js',
+  'template.html',
+  'xlsx.full.min.js',
+  'icon-192.png',
+  'icon-512.png',
+  'icon-maskable-512.png'
+];
+
+self.addEventListener('install', e => {
+  e.waitUntil(
+    caches.open(V)
+      .then(c => c.addAll(FILES))
+      .then(() => self.skipWaiting())
+  );
+});
+
+self.addEventListener('activate', e => {
+  e.waitUntil(
+    caches.keys().then(keys =>
+      Promise.all(
+        keys.filter(key => key !== V).map(key => caches.delete(key))
+      )
+    ).then(() => self.clients.claim())
+  );
+});
+
+self.addEventListener('fetch', e => {
+  if (e.request.method !== 'GET') return;
+
+  e.respondWith(
+    caches.match(e.request, { ignoreSearch: true }).then(cached => {
+      const network = fetch(e.request).then(response => {
+        if (response && response.status === 200) {
+          const clone = response.clone();
+          caches.open(V).then(cache => cache.put(e.request, clone));
+        }
+        return response;
+      }).catch(() => cached);
+
+      return cached || network;
+    })
+  );
 });
