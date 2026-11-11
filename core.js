@@ -24,7 +24,7 @@
   let _id = 0; const newId = () => 'p' + Date.now().toString(36) + (++_id).toString(36) + Math.random().toString(36).slice(2, 5);
 
   function emptyState() {
-    return { v: 1, config: { intervalo: 90, diaSemana: 0, diasPendencias: 30, horaPadrao: '17h', modelo: '' }, oradores: [], congregacoes: [], horarios: {}, esbocos: [], prog: [] };
+    return { v: 1, config: { intervalo: 90, diaSemana: 0, diasPendencias: 30, horaPadrao: '17h', modelo: '', local: '' }, oradores: [], congregacoes: [], horarios: {}, esbocos: [], prog: [] };
   }
   function restoreState(s) {
     if (!s || s.v !== 1 || !['prog', 'oradores', 'esbocos'].every(k => Array.isArray(s[k]))) throw new Error('estrutura de backup inválida');
@@ -43,6 +43,12 @@
     if (typeof out.horarios !== 'object' || Array.isArray(out.horarios)) throw new Error('horários inválidos');
     const ids = new Set();
     out.prog.forEach(p => { if (typeof p.id !== 'string' || !p.id || ids.has(p.id)) p.id = newId(); ids.add(p.id); });
+    if (typeof out.config.local !== 'string') throw new Error('congregação local inválida');
+    out.prog.forEach(p => {
+      if (p.tipo != null && !['local', 'envio'].includes(p.tipo)) throw new Error('modalidade inválida');
+      for (const k of ['origem', 'destino']) if (p[k] != null && typeof p[k] !== 'string') throw new Error('congregação inválida');
+      if (p.tipo === 'envio' && (!norm(p.origem) || !norm(p.destino) || key(p.origem) === key(p.destino))) throw new Error('envio sem origem e destino distintos');
+    });
     return out;
   }
   function congDe(st, nome) { const o = st.oradores.find(o => key(o.nome) === key(nome)); return o ? o.cong : ''; }
@@ -50,12 +56,26 @@
   function allCongs(st) {
     const set = new Map();
     st.oradores.forEach(o => { if (norm(o.cong)) set.set(key(o.cong), norm(o.cong)); });
+    if (norm(st.config.local)) set.set(key(st.config.local), norm(st.config.local));
+    st.prog.forEach(p => { for (const c of [p.origem, p.destino]) if (norm(c)) set.set(key(c), norm(c)); });
     st.congregacoes.forEach(c => { if (norm(c)) set.set(key(c), norm(c)); });
     return [...set.values()].sort((a, b) => a.localeCompare(b, 'pt-BR'));
   }
-  // linhas da programação com data numérica e congregação atual
+  // Registros antigos continuam locais; os novos guardam origem e destino históricos.
+  function origemDe(st, p) { return norm(p.origem) || congDe(st, p.orador); }
+  function destinoDe(st, p) { return norm(p.destino) || (p.tipo === 'envio' ? '' : norm(st.config.local)); }
+  function localRows(st) { return rows(st).filter(p => p.tipo !== 'envio'); }
+  function participa(r, c) { return key(r.origem) === key(c) || key(r.destino) === key(c); }
+  function arranjos(st) {
+    const R = rows(st);
+    return allCongs(st).filter(c => key(c) !== key(st.config.local)).map(nome => ({ nome,
+      recebidos: R.filter(r => r.tipo !== 'envio' && key(r.origem) === key(nome)).length,
+      enviados: R.filter(r => r.tipo === 'envio' && key(r.destino) === key(nome)).length,
+      proximos: R.filter(r => participa(r, nome) && r.d >= D.today()).length
+    }));
+  }
   function rows(st) {
-    return st.prog.filter(p => p.data).map(p => ({ ...p, d: D.parse(p.data), cong: congDe(st, p.orador) }));
+    return st.prog.filter(p => p.data).map(p => ({ ...p, d: D.parse(p.data), tipo: p.tipo || 'local', origem: origemDe(st, p), destino: destinoDe(st, p), cong: origemDe(st, p) }));
   }
   /* ---------- alerta de repetição ---------- */
   function alerta(st, row) {
@@ -63,8 +83,9 @@
     const others = st.prog.filter(p => p.id !== row.id && p.data);
     const pick = fn => others.find(fn) || null;
     const orador = norm(row.orador) ? pick(p => key(p.orador) === key(row.orador) && Math.abs(D.parse(p.data) - d) < N) : null;
-    const esboco = row.esboco ? pick(p => Number(p.esboco) === Number(row.esboco) && Math.abs(D.parse(p.data) - d) < N) : null;
-    return { orador, esboco, any: !!(orador || esboco) };
+    const esboco = row.esboco ? pick(p => key(destinoDe(st, p)) === key(destinoDe(st, row)) && Number(p.esboco) === Number(row.esboco) && Math.abs(D.parse(p.data) - d) < N) : null;
+    const conflito = norm(row.orador) ? pick(p => key(p.orador) === key(row.orador) && D.parse(p.data) === d) : null;
+    return { orador, esboco, conflito, any: !!(orador || esboco || conflito) };
   }
   /* ---------- histórico: último (<= ref) e próximo (> ref) ---------- */
   function lastNext(list, ref) {
@@ -83,18 +104,18 @@
     st.oradores.forEach((o, idx) => {
       if (congFilter && key(o.cong) !== key(congFilter)) return;
       const mine = R.filter(r => key(r.orador) === key(o.nome));
-      const busy = mine.find(r => Math.abs(r.d - d) < N);
+      const busy = mine.find(r => r.d === d || (r.tipo !== 'envio' && Math.abs(r.d - d) < N));
       const { last, next } = lastNext(mine, d);
       oradores.push({ nome: o.nome, cong: o.cong, livre: !busy, conflito: busy || null, lastD: last ? last.d : null, dias: last ? d - last.d : null, lastEsb: last ? last.esboco : null, next: next ? next.d : null, idx });
     });
     const disponiveis = oradores.filter(o => o.livre).sort(sortNever);
     const congs = allCongs(st).map((c, idx) => {
-      const mine = R.filter(r => key(r.cong) === key(c));
+      const mine = R.filter(r => participa(r, c));
       const { last, next } = lastNext(mine, d);
       return { nome: c, lastD: last ? last.d : null, dias: last ? d - last.d : null, lastOrador: last ? last.orador : null, next: next ? next.d : null, nextOrador: next ? next.orador : null, idx };
     }).sort(sortNever);
     const esbocos = st.esbocos.map((e, idx) => {
-      const mine = R.filter(r => Number(r.esboco) === e.n);
+      const mine = R.filter(r => r.tipo !== 'envio' && Number(r.esboco) === e.n);
       const busy = mine.find(r => Math.abs(r.d - d) < N);
       const { last, next } = lastNext(mine, d);
       return { n: e.n, tema: norm(e.tema), livre: !busy, lastD: last ? last.d : null, dias: last ? d - last.d : null, lastOrador: last ? last.orador : null, next: next ? next.d : null, nextOrador: next ? next.orador : null, idx };
@@ -110,7 +131,7 @@
       return { nome: o.nome, cong: o.cong, lastD: last ? last.d : null, dias: last ? ref - last.d : null, lastEsb: last ? last.esboco : null, next: next ? next.d : null, nextEsb: next ? next.esboco : null, idx };
     }).sort(sortNever);
     const congs = allCongs(st).map((c, idx) => {
-      const mine = R.filter(r => key(r.cong) === key(c)); const { last, next } = lastNext(mine, ref);
+      const mine = R.filter(r => participa(r, c)); const { last, next } = lastNext(mine, ref);
       return { nome: c, lastD: last ? last.d : null, dias: last ? ref - last.d : null, lastOrador: last ? last.orador : null, next: next ? next.d : null, nextOrador: next ? next.orador : null, idx };
     }).sort(sortNever);
     const esbocos = st.esbocos.map((e, idx) => {
@@ -136,7 +157,7 @@
   }
   /* ---------- Datas livres ---------- */
   function datasLivres(st, iniISO, fimISO, dow) {
-    const ini = D.parse(iniISO), fim = D.parse(fimISO), R = rows(st), out = [];
+    const ini = D.parse(iniISO), fim = D.parse(fimISO), R = localRows(st), out = [];
     if (!(fim >= ini)) return out;
     let d = ini + ((Number(dow) - D.dow(ini) + 7) % 7);
     for (; d <= fim; d += 7) {
@@ -155,7 +176,7 @@
     const lines = R.map(r => {
       const orad = norm(r.orador) ? norm(r.orador) + (r.cong ? ' (' + r.cong + ')' : '') : 'orador a definir';
       const tema = r.esboco ? ' - Nº ' + r.esboco + ': ' + temaDe(st, r.esboco) : ' - tema a definir';
-      return D.br(r.d) + ' (' + D.dow3(r.d) + ') - ' + orad + tema;
+      return D.br(r.d) + ' (' + D.dow3(r.d) + ') - ' + (r.tipo === 'envio' ? '[Envio] ' : '[Local] ') + orad + ' → ' + (r.destino || 'congregação local') + tema;
     });
     return head + '\n' + lines.join('\n');
   }
@@ -169,13 +190,13 @@
     const lo = iniISO ? D.parse(iniISO) : -1e9, hi = fimISO ? D.parse(fimISO) : 1e9;
     const R = rows(st).filter(r => r.d >= lo && r.d <= hi);
     const oradores = ranking(st.oradores.map(o => ({ nome: o.nome, cong: o.cong, count: R.filter(r => key(r.orador) === key(o.nome)).length })));
-    const congs = ranking(allCongs(st).map(c => ({ nome: c, count: R.filter(r => key(r.cong) === key(c)).length })));
+    const congs = ranking(allCongs(st).map(c => ({ nome: c, count: R.filter(r => participa(r, c)).length })));
     const esbocos = ranking(st.esbocos.map(e => ({ n: e.n, tema: norm(e.tema), count: R.filter(r => Number(r.esboco) === e.n).length })));
     return { total: R.length, oradores, congs, esbocos };
   }
   /* ---------- Indicadores da tela inicial ---------- */
   function indicadores(st, today) {
-    const R = rows(st);
+    const R = localRows(st);
     const futuros = R.filter(r => r.d >= today).sort((a, b) => a.d - b.d);
     const prox = futuros[0] || null;
     const ano = D.year(today);
@@ -188,19 +209,19 @@
   /* ---------- Histórico por orador, congregação ou esboço ---------- */
   function historico(st, tipo, id, today) {
     const R = rows(st).sort((a, b) => a.d - b.d);
-    const L = tipo === 'o' ? R.filter(r => key(r.orador) === key(id)) : tipo === 'c' ? R.filter(r => key(r.cong) === key(id)) : R.filter(r => Number(r.esboco) === Number(id));
-    const dec = r => ({ id: r.id, d: r.d, data: r.data, orador: r.orador, cong: r.cong, esboco: r.esboco, tema: r.esboco ? temaDe(st, r.esboco) : '', confirmado: r.confirmado, pedido: r.pedido || '' });
+    const L = tipo === 'o' ? R.filter(r => key(r.orador) === key(id)) : tipo === 'c' ? R.filter(r => participa(r, id)) : R.filter(r => Number(r.esboco) === Number(id));
+    const dec = r => ({ id: r.id, d: r.d, data: r.data, orador: r.orador, cong: r.cong, tipo: r.tipo, origem: r.origem, destino: r.destino, esboco: r.esboco, tema: r.esboco ? temaDe(st, r.esboco) : '', confirmado: r.confirmado, pedido: r.pedido || '' });
     const past = L.filter(r => r.d < today).map(dec).reverse(), future = L.filter(r => r.d >= today).map(dec);
     return { past, future, total: L.length, last: past[0] || null, next: future[0] || null };
   }
   /* ---------- Mensagem de confirmação ---------- */
   const MODELO_PADRAO = 'Olá, {nome}!\n\nO irmão foi convidado para proferir o discurso: {tema}\nna congregação: {congregacao}\nno dia {data}\nàs {hora}.\n\nConfirme por gentileza se poderá comparecer.\nEm caso positivo, já pode nos informar também o número do cântico e as mídias que serão executadas durante o discurso.\n\nDe já agradecemos! Até Breve!';
-  function horaDe(st, p) { return norm(p.hora) || norm((st.horarios || {})[key(congDe(st, p.orador))]) || norm(st.config.horaPadrao); }
+  function horaDe(st, p) { return norm(p.hora) || norm((st.horarios || {})[key(destinoDe(st, p))]) || norm(st.config.horaPadrao); }
   function mensagemConfirmacao(st, p) {
     if (!norm(p.orador) || !p.data) return null;
     const hora = horaDe(st, p), modelo = norm(st.config.modelo) ? st.config.modelo : MODELO_PADRAO;
     let t = modelo; if (!hora) t = t.split('\n').filter(l => !l.includes('{hora}')).join('\n');
-    const map = { nome: norm(p.orador), tema: (p.esboco ? temaDe(st, p.esboco) : '') || '(tema a definir)', congregacao: congDe(st, p.orador) || '(congregação a definir)', data: D.brFull(D.parse(p.data)), hora };
+    const map = { nome: norm(p.orador), tema: (p.esboco ? temaDe(st, p.esboco) : '') || '(tema a definir)', congregacao: destinoDe(st, p) || '(congregação local a definir)', data: D.brFull(D.parse(p.data)), hora };
     return t.replace(/\{(\w+)\}/g, (m, k) => k in map ? map[k] : m);
   }
   function foneWa(f) {
@@ -226,21 +247,26 @@
   }
   function importWorkbook(XLSX, buf) {
     const wb = XLSX.read(buf, { type: 'array' });
-    const res = { oradores: [], congregacoes: [], horarios: {}, esbocos: [], prog: [], avisos: [], abas: [] };
+    const res = { oradores: [], congregacoes: [], horarios: {}, esbocos: [], prog: [], avisos: [], abas: [], config: {} };
     const strip = s => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toUpperCase().trim();
     for (const name of wb.SheetNames) {
       const rs = sheetRows(XLSX, wb.Sheets[name]); const sn = strip(name);
       if (/^\d{4}$/.test(sn)) {
         const h = findHeader(rs, n => n.includes('DATA') && n.includes('ORADOR')); if (!h) { res.avisos.push('Aba ' + name + ': cabeçalho não encontrado.'); continue; }
         const col = pred => h.names.findIndex(pred);
-        const cD = col(n => n === 'DATA'), cO = col(n => n === 'ORADOR'), cE = col(n => /^N[º°O]?( ESB.*)?$|^N[ÚU]MERO|^ESBO[ÇC]O$/.test(strip(n))), cC = col(n => strip(n).startsWith('CANTICO')), cI = col(n => n === 'IMAGENS'), cF = col(n => n === 'CONFIRMADO'), cH = col(n => strip(n) === 'HORARIO'), cP = col(n => n === 'PEDIDO');
+        const cD = col(n => n === 'DATA'), cO = col(n => n === 'ORADOR'), cE = col(n => /^N[º°O]?( ESB.*)?$|^N[ÚU]MERO|^ESBO[ÇC]O$/.test(strip(n))), cC = col(n => strip(n).startsWith('CANTICO')), cI = col(n => n === 'IMAGENS'), cF = col(n => n === 'CONFIRMADO'), cH = col(n => strip(n) === 'HORARIO'), cP = col(n => n === 'PEDIDO'), cTipo = col(n => n === 'TIPO'), cOrig = col(n => n === 'ORIGEM'), cDest = col(n => n === 'DESTINO');
         let k = 0;
         for (let r = h.r + 1; r < rs.length; r++) {
           const row = rs[r], d = toDay(row[cD]); if (d == null) continue;
           const ev = cE >= 0 ? num(row[cE]) : null, cv = cC >= 0 ? row[cC] : '';
-          res.prog.push({ id: newId(), data: D.iso(d), orador: norm(row[cO]), esboco: ev, cantico: cv === '' ? '' : (num(cv) != null ? num(cv) : norm(cv)), imagens: cI >= 0 ? norm(row[cI]).toUpperCase() : '', confirmado: cF >= 0 ? norm(row[cF]).toUpperCase() : '', hora: cH >= 0 ? norm(row[cH]) : '', pedido: cP >= 0 && toDay(row[cP]) != null ? D.iso(toDay(row[cP])) : '' }); k++;
+          const tipo = cTipo >= 0 && key(row[cTipo]) === 'envio' ? 'envio' : 'local';
+          const origem = cOrig >= 0 ? norm(row[cOrig]) : '', destino = cDest >= 0 ? norm(row[cDest]) : '';
+          if (tipo === 'envio' && (!origem || !destino || key(origem) === key(destino))) throw new Error('Envio inválido na aba ' + name + ', linha ' + (r + 1));
+          res.prog.push({ tipo, origem, destino, id: newId(), data: D.iso(d), orador: norm(row[cO]), esboco: ev, cantico: cv === '' ? '' : (num(cv) != null ? num(cv) : norm(cv)), imagens: cI >= 0 ? norm(row[cI]).toUpperCase() : '', confirmado: cF >= 0 ? norm(row[cF]).toUpperCase() : '', hora: cH >= 0 ? norm(row[cH]) : '', pedido: cP >= 0 && toDay(row[cP]) != null ? D.iso(toDay(row[cP])) : '' }); k++;
         }
         res.abas.push(name + ': ' + k + ' discursos');
+      } else if (sn === 'CONFIGURACOES') {
+        for (const row of rs) if (strip(norm(row[0])) === 'CONGREGACAO LOCAL') res.config.local = norm(row[1]);
       } else if (sn === 'CADASTROS' || sn === 'CADASTRO') {
         const h = findHeader(rs, n => n.includes('ORADOR') && n.some(x => x.startsWith('CONGREGA'))); if (!h) { res.avisos.push('Aba ' + name + ': cabeçalho não encontrado.'); continue; }
         const cO = h.names.findIndex(n => n === 'ORADOR'), cG = h.names.findIndex(n => strip(n) === 'CONGREGACAO'), cL = h.names.findIndex(n => strip(n) === 'CONGREGACOES'), cT = h.names.findIndex(n => ['TELEFONE', 'CELULAR', 'WHATSAPP', 'FONE'].includes(strip(n))), cHr = h.names.findIndex(n => strip(n) === 'HORARIO');
@@ -257,7 +283,7 @@
       }
     }
     if (!res.prog.length && !res.oradores.length && !res.esbocos.length) res.avisos.push('Não encontrei abas conhecidas (anos como 2026, CADASTROS, ESBOÇOS).');
-    if (!res.oradores.length && res.prog.length) { const s = new Set(); res.prog.forEach(p => { if (p.orador && !s.has(key(p.orador))) { s.add(key(p.orador)); res.oradores.push({ nome: p.orador, cong: '' }); } }); res.avisos.push('Sem aba CADASTROS: criei a lista de oradores a partir da programação (sem congregação).'); }
+    if (!res.oradores.length && res.prog.length) { const s = new Set(); res.prog.forEach(p => { if (p.orador && !s.has(key(p.orador))) { s.add(key(p.orador)); res.oradores.push({ nome: p.orador, cong: p.origem || '' }); } }); res.avisos.push('Sem aba CADASTROS: criei a lista de oradores a partir da programação (sem congregação).'); }
     return res;
   }
   function exportWorkbook(XLSX, st) {
@@ -266,8 +292,8 @@
     if (!years.length) years.push(D.year(D.today()));
     for (const y of years) {
       const list = st.prog.filter(p => p.data && D.year(D.parse(p.data)) === y).sort((a, b) => a.data.localeCompare(b.data));
-      const aoa = [['DATA', 'ORADOR', 'CONGREGAÇÃO', 'Nº', 'TEMA', 'CÂNTICO', 'IMAGENS', 'CONFIRMADO', 'HORÁRIO', 'PEDIDO']];
-      list.forEach(p => { const d = D.parse(p.data); aoa.push([d + 25569, p.orador, congDe(st, p.orador), p.esboco == null ? '' : p.esboco, p.esboco ? temaDe(st, p.esboco) : '', p.cantico === '' ? '' : p.cantico, p.imagens, p.confirmado, p.hora || '', p.pedido || '']); });
+      const aoa = [['DATA', 'ORADOR', 'CONGREGAÇÃO', 'Nº', 'TEMA', 'CÂNTICO', 'IMAGENS', 'CONFIRMADO', 'HORÁRIO', 'PEDIDO', 'TIPO', 'ORIGEM', 'DESTINO']];
+      list.forEach(p => { const d = D.parse(p.data); aoa.push([d + 25569, p.orador, congDe(st, p.orador), p.esboco == null ? '' : p.esboco, p.esboco ? temaDe(st, p.esboco) : '', p.cantico === '' ? '' : p.cantico, p.imagens, p.confirmado, p.hora || '', p.pedido || '', p.tipo || 'local', origemDe(st, p), destinoDe(st, p)]); });
       const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true }); ws['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 26 }, { wch: 6 }, { wch: 50 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 10 }, { wch: 12 }];
       for (let r = 1; r < aoa.length; r++) { const c = ws['A' + (r + 1)]; if (c) { c.t = 'n'; c.z = 'dd/mm/yyyy'; } }
       XLSX.utils.book_append_sheet(wb, ws, String(y));
@@ -277,7 +303,8 @@
     const wc = XLSX.utils.aoa_to_sheet(cad); wc['!cols'] = [{ wch: 26 }, { wch: 26 }, { wch: 16 }, { wch: 3 }, { wch: 26 }, { wch: 10 }]; XLSX.utils.book_append_sheet(wb, wc, 'CADASTROS');
     const es = [['Nº', 'TEMA']]; st.esbocos.forEach(e => es.push([e.n, norm(e.tema)]));
     const we = XLSX.utils.aoa_to_sheet(es); we['!cols'] = [{ wch: 6 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, we, 'ESBOÇOS');
+    XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['CONGREGAÇÃO LOCAL', st.config.local || '']]), 'CONFIGURAÇÕES');
     return XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellDates: true });
   }
-  root.Core = { restoreState, MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
+  root.Core = { origemDe, destinoDe, localRows, participa, arranjos, restoreState, MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
 })(typeof window !== 'undefined' ? window : globalThis);

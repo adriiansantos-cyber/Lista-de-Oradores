@@ -4,10 +4,10 @@
 const C = Core, D = C.D, norm = C.norm, key = C.key;
 const LS = 'lista-oradores-v1';
 const TABS = ['inicio', 'prog', 'escalar', 'pend', 'mais'];
-const TITLES = { inicio: 'Lista de Oradores', prog: 'Programação', escalar: 'Quem escalar', pend: 'Pendências', mais: 'Mais opções', livres: 'Datas livres', compartilhar: 'Compartilhar', rodizio: 'Rodízio', relatorios: 'Relatórios', cadastros: 'Cadastros', dados: 'Dados e planilha', config: 'Configurações', ajuda: 'Ajuda', hist: 'Histórico', msgs: 'Confirmações' };
+const TITLES = { arranjos: 'Arranjos entre congregações', inicio: 'Lista de Oradores', prog: 'Programação', escalar: 'Quem escalar', pend: 'Pendências', mais: 'Mais opções', livres: 'Datas livres', compartilhar: 'Compartilhar', rodizio: 'Rodízio', relatorios: 'Relatórios', cadastros: 'Cadastros', dados: 'Dados e planilha', config: 'Configurações', ajuda: 'Ajuda', hist: 'Histórico', msgs: 'Confirmações' };
 const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julho', 'agosto', 'setembro', 'outubro', 'novembro', 'dezembro'];
 let st = load();
-const ui = { route: 'inicio', esc: { data: '', int: null, cong: '', draft: {}, no: 8, ne: 8 }, prog: { filtro: 'prox' }, pend: { dias: null }, livres: { ini: '', fim: '', dow: null }, comp: { ini: '', fim: '' }, rod: { aba: 'o', n: 30, q: '' }, rel: { ano: 'todos', aba: 'o', n: 30 }, cad: { aba: 'o', q: '' }, form: null, imp: null, hist: { tipo: 'o', id: '' }, hstack: [], hfrom: 'cadastros', msgs: { dias: 30 } };
+const ui = { route: 'inicio', esc: { data: '', int: null, cong: '', draft: {}, no: 8, ne: 8 }, prog: { filtro: 'prox', tipo: 'todos' }, pend: { dias: null }, livres: { ini: '', fim: '', dow: null }, comp: { ini: '', fim: '' }, rod: { aba: 'o', n: 30, q: '' }, rel: { ano: 'todos', aba: 'o', n: 30 }, cad: { aba: 'o', q: '' }, form: null, imp: null, hist: { tipo: 'o', id: '' }, hstack: [], hfrom: 'cadastros', msgs: { dias: 30 } };
 
 function load() { try { const raw = localStorage.getItem(LS); if (raw) return C.restoreState(JSON.parse(raw)); } catch (e) { setTimeout(() => toast('Não foi possível carregar os dados. Restaure um backup válido.'), 0); } return C.emptyState(); }
 function save() { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) { toast('Não foi possível salvar no aparelho.'); } }
@@ -27,13 +27,13 @@ function render(reset) {
   $('#back').style.display = TABS.includes(ui.route) ? 'none' : 'block';
   v.scrollTop = reset ? 0 : sc;
 }
-const nextDate = () => { const t = D.today(), used = new Set(st.prog.map(p => p.data)); let d = t + ((st.config.diaSemana - D.dow(t) + 7) % 7); for (let i = 0; i < 300; i++, d += 7) if (!used.has(D.iso(d))) return D.iso(d); return D.iso(t); };
+const nextDate = () => { const t = D.today(), used = new Set(st.prog.filter(p => p.tipo !== 'envio').map(p => p.data)); let d = t + ((st.config.diaSemana - D.dow(t) + 7) % 7); for (let i = 0; i < 300; i++, d += 7) if (!used.has(D.iso(d))) return D.iso(d); return D.iso(t); };
 const fmtDias = n => n == null ? 'Nunca' : n + (n === 1 ? ' dia' : ' dias');
 const lastTxt = o => o.lastD == null ? 'Nunca' : D.brFull(o.lastD) + ' · ' + fmtDias(o.dias);
 const sortedOrad = () => st.oradores.slice().sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR'));
 
 function itemProg(r) {
-  const al = C.alerta(st, r), f = C.faltas(r); let chips = '';
+  const al = C.alerta(st, r), f = C.faltas(r); let chips = '<span class="chip">' + (r.tipo === 'envio' ? 'Envio' : 'Local') + ' · ' + esc(r.origem || 'origem a definir') + ' → ' + esc(r.destino || 'congregação local') + '</span>';
   if (al.any) chips += '<span class="chip bad">⚠ repetição' + (al.orador ? ' de orador' : '') + (al.esboco ? ' de esboço' : '') + '</span>';
   chips += f.includes('confirmação') ? (r.pedido ? '<span class="chip">pedido enviado em ' + D.br(D.parse(r.pedido)) + '</span>' : '<span class="chip warn">sem confirmação</span>') : '<span class="chip ok">confirmado</span>';
   if (f.includes('cântico')) chips += '<span class="chip warn">sem cântico</span>'; else chips += '<span class="chip">cântico ' + esc(r.cantico) + '</span>';
@@ -50,7 +50,7 @@ V.inicio = () => {
   h += '<div class="row" style="margin:0 0 10px"><button class="btn primary" data-go="escalar">Quem escalar</button><button class="btn" data-act="newProg">Novo discurso</button><button class="btn" data-go="compartilhar">Compartilhar</button></div>';
   const cf = C.confirmacoes(st, t, st.config.diasPendencias || 30), novos = cf.filter(x => x.status === 'novo').length, aguard = cf.length - novos;
   if (cf.length) h += '<div class="card"><h3>Confirmações dos oradores</h3><div class="sub">' + (novos ? novos + ' a pedir' : '') + (novos && aguard ? ' · ' : '') + (aguard ? aguard + ' aguardando resposta' : '') + '</div><button class="btn primary block" style="margin-top:8px" data-go="msgs">Abrir confirmações</button></div>';
-  const prox = C.rows(st).filter(r => r.d >= t).sort((a, b) => a.d - b.d).slice(0, 3);
+  const prox = C.localRows(st).filter(r => r.d >= t).sort((a, b) => a.d - b.d).slice(0, 3);
   if (prox.length) h += '<div class="sec">Próximos discursos</div>' + prox.map(itemProg).join('');
   return h;
 };
@@ -58,7 +58,9 @@ V.prog = () => {
   const t = D.today(), R = C.rows(st).sort((a, b) => a.d - b.d), anos = [...new Set(R.map(r => D.year(r.d)))].sort();
   let f = ui.prog.filtro; if (f === 'prox' && !R.some(r => r.d >= t) && R.length) f = ui.prog.filtro = 'tudo';
   let list = f === 'prox' ? R.filter(r => r.d >= t) : f === 'tudo' ? R : R.filter(r => D.year(r.d) === Number(f));
+  list = list.filter(r => ui.prog.tipo === 'todos' || r.tipo === ui.prog.tipo);
   let h = '<div class="seg"><button data-act="pf" data-v="prox" class="' + (f === 'prox' ? 'on' : '') + '">Próximos</button>' + anos.map(a => '<button data-act="pf" data-v="' + a + '" class="' + (f == a ? 'on' : '') + '">' + a + '</button>').join('') + '<button data-act="pf" data-v="tudo" class="' + (f === 'tudo' ? 'on' : '') + '">Tudo</button></div>';
+  h = '<div class="field"><label>Programação</label><select data-chg="progTipo">' + [['todos','Todos os discursos'],['local','Na congregação local'],['envio','Envios para outras congregações']].map(([v,t]) => '<option value="' + v + '" ' + (ui.prog.tipo === v ? 'selected' : '') + '>' + t + '</option>').join('') + '</select></div>' + h;
   if (!list.length) h += '<div class="empty">Nenhum discurso aqui ainda.<br>Toque em + para lançar o primeiro.</div>';
   let mes = '';
   list.forEach(r => { const m = MESES[new Date(r.d * 86400000).getUTCMonth()] + ' ' + D.year(r.d); if (m !== mes) { mes = m; h += '<div class="sec">' + m + '</div>'; } h += itemProg(r); });
@@ -73,8 +75,8 @@ V.escalar = () => {
   if (!R.disponiveis.length) h += '<div class="empty">Nenhum orador disponível nessa data.</div>';
   R.disponiveis.slice(0, e.no).forEach(o => { h += '<div class="item"><div class="m" data-act="hist" data-t="o" data-v="' + esc(o.nome) + '"><b>' + esc(o.nome) + '</b><div>' + esc(o.cong) + ' · último: ' + lastTxt(o) + (o.lastEsb ? ' (Nº ' + o.lastEsb + ')' : '') + '</div></div><button class="btn sm ' + (key(dr.orador) === key(o.nome) ? 'primary' : '') + '" data-act="pickO" data-v="' + esc(o.nome) + '">' + (key(dr.orador) === key(o.nome) ? 'Escolhido' : 'Escalar') + '</button></div>'; });
   if (R.disponiveis.length > e.no) h += '<button class="btn block" data-act="moreO">Ver mais oradores</button>';
-  h += '<div class="sec">Congregações (há mais tempo sem enviar)</div>';
-  R.congs.forEach(c => { h += '<div class="item"><div class="m" data-act="hist" data-t="c" data-v="' + esc(c.nome) + '"><b>' + esc(c.nome) + '</b><div>último envio: ' + lastTxt(c) + (c.lastOrador ? ' · ' + esc(c.lastOrador) : '') + (c.next ? '<br>próximo: ' + D.brFull(c.next) + ' · ' + esc(c.nextOrador) : '') + '</div></div><button class="btn sm" data-act="pickC" data-v="' + esc(c.nome) + '">Ver orad.</button></div>'; });
+  h += '<div class="sec">Congregações (há mais tempo sem arranjo)</div>';
+  R.congs.forEach(c => { h += '<div class="item"><div class="m" data-act="hist" data-t="c" data-v="' + esc(c.nome) + '"><b>' + esc(c.nome) + '</b><div>último arranjo: ' + lastTxt(c) + (c.lastOrador ? ' · ' + esc(c.lastOrador) : '') + (c.next ? '<br>próximo: ' + D.brFull(c.next) + ' · ' + esc(c.nextOrador) : '') + '</div></div><button class="btn sm" data-act="pickC" data-v="' + esc(c.nome) + '">Ver orad.</button></div>'; });
   h += '<div class="sec">Esboços (há mais tempo sem uso)</div>';
   R.esbDisp.slice(0, e.ne).forEach(x => { const on = dr.esboco === x.n; h += '<div class="item"><div class="m" data-act="hist" data-t="e" data-v="' + x.n + '"><b>Nº ' + x.n + '</b><div>' + esc(x.tema) + '<br>último uso: ' + lastTxt(x) + (x.lastOrador ? ' · ' + esc(x.lastOrador) : '') + '</div></div><button class="btn sm ' + (on ? 'primary' : '') + '" data-act="pickE" data-v="' + x.n + '">' + (on ? 'Escolhido' : 'Usar') + '</button></div>'; });
   if (R.esbDisp.length > e.ne) h += '<button class="btn block" data-act="moreE">Ver mais esboços</button>';
@@ -86,7 +88,7 @@ V.pend = () => {
   let h = '<div class="card"><div class="field" style="margin:0"><label>Olhar os próximos</label><select data-chg="pendDias">' + [7, 15, 30, 60, 90].map(n => '<option value="' + n + '" ' + (n === dias ? 'selected' : '') + '>' + n + ' dias</option>').join('') + '</select></div></div>';
   h += '<div class="kpis"><div class="kpi"><b>' + P.total + '</b><span>Discursos no período</span></div><div class="kpi ' + (P.semConfirmacao ? 'warn' : 'ok') + '"><b>' + P.semConfirmacao + '</b><span>Sem confirmação</span></div><div class="kpi ' + (P.semCantico ? 'warn' : 'ok') + '"><b>' + P.semCantico + '</b><span>Sem cântico</span></div><div class="kpi ' + (P.semImagens ? 'warn' : 'ok') + '"><b>' + P.semImagens + '</b><span>Imagens não definidas</span></div></div>';
   if (!P.lista.length) return h + '<div class="empty">Tudo certo nesse período. 🎉</div>';
-  P.lista.forEach(r => { h += '<div class="item" data-act="editProg" data-id="' + r.id + '"><div class="d"><b>' + D.br(r.d).slice(0, 2) + '</b><small>' + D.dow3(r.d) + '</small></div><div class="m"><b>' + esc(r.orador || 'Orador a definir') + '</b><div>' + (r.faltam === 0 ? 'hoje' : 'faltam ' + fmtDias(r.faltam)) + '</div>' + r.faltas.map(x => '<span class="chip warn">' + x + '</span>').join('') + '</div>' + (r.faltas.includes('confirmação') && r.orador ? '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm primary" data-act="msg" data-id="' + r.id + '">Pedir</button><button class="btn sm" data-act="confirmar" data-id="' + r.id + '">Confirmar</button></div>' : '') + '</div>'; });
+  P.lista.forEach(r => { h += '<div class="item" data-act="editProg" data-id="' + r.id + '"><div class="d"><b>' + D.br(r.d).slice(0, 2) + '</b><small>' + D.dow3(r.d) + '</small></div><div class="m"><b>' + esc(r.orador || 'Orador a definir') + '</b><div>' + (r.faltam === 0 ? 'hoje' : 'faltam ' + fmtDias(r.faltam)) + ' · ' + (r.tipo === 'envio' ? 'Envio para ' : 'Local: ') + esc(r.destino || 'congregação local') + '</div>' + r.faltas.map(x => '<span class="chip warn">' + x + '</span>').join('') + '</div>' + (r.faltas.includes('confirmação') && r.orador ? '<div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm primary" data-act="msg" data-id="' + r.id + '">Pedir</button><button class="btn sm" data-act="confirmar" data-id="' + r.id + '">Confirmar</button></div>' : '') + '</div>'; });
   return h;
 };
 V.livres = () => {
@@ -108,7 +110,7 @@ V.rodizio = () => {
   const r = ui.rod, R = C.rodizio(st, D.today());
   let h = '<div class="seg"><button data-act="rodAba" data-v="o" class="' + (r.aba === 'o' ? 'on' : '') + '">Oradores</button><button data-act="rodAba" data-v="c" class="' + (r.aba === 'c' ? 'on' : '') + '">Congregações</button><button data-act="rodAba" data-v="e" class="' + (r.aba === 'e' ? 'on' : '') + '">Esboços</button></div><div class="sub" style="margin:0 4px 8px">Do que está há mais tempo sem uso para o mais recente.</div>';
   if (r.aba === 'o') R.oradores.forEach(o => { h += '<div class="item" data-act="hist" data-t="o" data-v="' + esc(o.nome) + '"><div class="m"><b>' + esc(o.nome) + '</b><div>' + esc(o.cong) + '<br>Último: ' + lastTxt(o) + (o.lastEsb ? ' · Nº ' + o.lastEsb : '') + '<br>Próximo: ' + (o.next ? D.brFull(o.next) + (o.nextEsb ? ' · Nº ' + o.nextEsb : '') : '—') + '</div></div></div>'; });
-  if (r.aba === 'c') R.congs.forEach(o => { h += '<div class="item" data-act="hist" data-t="c" data-v="' + esc(o.nome) + '"><div class="m"><b>' + esc(o.nome) + '</b><div>Último envio: ' + lastTxt(o) + (o.lastOrador ? ' · ' + esc(o.lastOrador) : '') + '<br>Próximo: ' + (o.next ? D.brFull(o.next) + ' · ' + esc(o.nextOrador) : '—') + '</div></div></div>'; });
+  if (r.aba === 'c') R.congs.forEach(o => { h += '<div class="item" data-act="hist" data-t="c" data-v="' + esc(o.nome) + '"><div class="m"><b>' + esc(o.nome) + '</b><div>Último arranjo: ' + lastTxt(o) + (o.lastOrador ? ' · ' + esc(o.lastOrador) : '') + '<br>Próximo: ' + (o.next ? D.brFull(o.next) + ' · ' + esc(o.nextOrador) : '—') + '</div></div></div>'; });
   if (r.aba === 'e') {
     const q = key(r.q), list = R.esbocos.filter(x => !q || String(x.n) === q || key(x.tema).includes(q));
     h += '<div class="field"><input type="search" placeholder="Buscar por número ou tema" value="' + esc(r.q) + '" data-inp="rodQ"></div>';
@@ -130,27 +132,32 @@ V.relatorios = () => {
 V.cadastros = () => {
   const c = ui.cad, q = key(c.q);
   let h = '<div class="seg"><button data-act="cadAba" data-v="o" class="' + (c.aba === 'o' ? 'on' : '') + '">Oradores</button><button data-act="cadAba" data-v="c" class="' + (c.aba === 'c' ? 'on' : '') + '">Congregações</button><button data-act="cadAba" data-v="e" class="' + (c.aba === 'e' ? 'on' : '') + '">Esboços</button></div><div class="field"><input type="search" placeholder="Buscar" value="' + esc(c.q) + '" data-inp="cadQ"></div>';
-  if (c.aba === 'o') { h += '<button class="btn primary block" data-act="newOrad">+ Novo orador</button>'; const L = st.oradores.map((o, i) => ({ ...o, i })).filter(o => !q || key(o.nome).includes(q) || key(o.cong).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); if (!L.length) h += '<div class="empty">Nenhum orador.</div>'; const R0 = C.rows(st); L.forEach(o => { const n = R0.filter(r => key(r.orador) === key(o.nome)).length; h += '<div class="item" data-act="hist" data-t="o" data-v="' + esc(o.nome) + '"><div class="m"><b>' + esc(o.nome) + '</b><div>' + esc(o.cong || 'sem congregação') + ' · ' + n + (n === 1 ? ' discurso' : ' discursos') + (o.fone ? ' · ' + esc(o.fone) : ' · sem telefone') + '</div></div></div>'; }); }
+  if (c.aba === 'o') { h += '<button class="btn primary block" data-act="newOrad">+ Novo orador</button>'; const L = st.oradores.map((o, i) => ({ ...o, i })).filter(o => !q || key(o.nome).includes(q) || key(o.cong).includes(q)).sort((a, b) => a.nome.localeCompare(b.nome, 'pt-BR')); if (!L.length) h += '<div class="empty">Nenhum orador.</div>'; const R0 = C.rows(st); L.forEach(o => { const n = R0.filter(r => key(r.orador) === key(o.nome)).length; h += '<div class="item" data-act="hist" data-t="o" data-v="' + esc(o.nome) + '"><div class="m"><b>' + esc(o.nome) + '</b><div>' + esc(o.cong || 'sem congregação') + (key(o.cong) === key(st.config.local) && st.config.local ? ' · local' : '') + ' · ' + n + (n === 1 ? ' discurso' : ' discursos') + (o.fone ? ' · ' + esc(o.fone) : ' · sem telefone') + '</div></div></div>'; }); }
   if (c.aba === 'c') { h += '<button class="btn primary block" data-act="newCong">+ Nova congregação</button>'; const L = C.allCongs(st).filter(x => !q || key(x).includes(q)); if (!L.length) h += '<div class="empty">Nenhuma congregação.</div>'; L.forEach(x => { const n = st.oradores.filter(o => key(o.cong) === key(x)).length; h += '<div class="item" data-act="hist" data-t="c" data-v="' + esc(x) + '"><div class="m"><b>' + esc(x) + '</b><div>' + n + (n === 1 ? ' orador' : ' oradores') + (st.horarios[key(x)] ? ' · ' + esc(st.horarios[key(x)]) : '') + '</div></div></div>'; }); }
   if (c.aba === 'e') { h += '<button class="btn primary block" data-act="newEsb">+ Novo esboço</button>'; const L = st.esbocos.filter(e => !q || String(e.n) === q || key(e.tema).includes(q)); if (!L.length) h += '<div class="empty">Nenhum esboço.</div>'; L.slice(0, 80).forEach(e => { h += '<div class="item" data-act="hist" data-t="e" data-v="' + e.n + '"><div class="pos">' + e.n + '</div><div class="m"><b>' + esc(norm(e.tema)) + '</b></div></div>'; }); if (L.length > 80) h += '<div class="sub" style="text-align:center">Mostrando 80 de ' + L.length + '. Use a busca.</div>'; }
   return h;
 };
 V.mais = () => {
   const it = (r, t, d) => '<div class="item" data-go="' + r + '"><div class="m"><b>' + t + '</b><div>' + d + '</div></div></div>';
-  return it('msgs', 'Confirmações', 'Pedir a confirmação dos oradores') + it('livres', 'Datas livres', 'Datas ainda sem orador') + it('compartilhar', 'Compartilhar', 'Texto da programação para o WhatsApp') + it('rodizio', 'Rodízio', 'Quem está há mais tempo sem') + it('relatorios', 'Relatórios', 'Rankings por período') + it('cadastros', 'Cadastros', 'Oradores, congregações e esboços') + it('dados', 'Dados e planilha', 'Importar, exportar e backup') + it('config', 'Configurações', 'Intervalo mínimo e preferências') + it('ajuda', 'Ajuda', 'Como usar') + (window.__installEv ? '<button class="btn primary block" data-act="instalar" style="margin-top:8px">Instalar aplicativo</button>' : '');
+  return it('arranjos', 'Arranjos', 'Oradores locais, envios e recebimentos') + it('msgs', 'Confirmações', 'Pedir a confirmação dos oradores') + it('livres', 'Datas livres', 'Datas ainda sem orador') + it('compartilhar', 'Compartilhar', 'Texto da programação para o WhatsApp') + it('rodizio', 'Rodízio', 'Quem está há mais tempo sem') + it('relatorios', 'Relatórios', 'Rankings por período') + it('cadastros', 'Cadastros', 'Oradores, congregações e esboços') + it('dados', 'Dados e planilha', 'Importar, exportar e backup') + it('config', 'Configurações', 'Intervalo mínimo e preferências') + it('ajuda', 'Ajuda', 'Como usar') + (window.__installEv ? '<button class="btn primary block" data-act="instalar" style="margin-top:8px">Instalar aplicativo</button>' : '');
+};
+V.arranjos = () => {
+  if (!norm(st.config.local)) return '<div class="card"><h3>Defina a congregação local</h3><p>Informe o nome em Configurações e vincule os oradores locais a essa congregação no cadastro.</p><button class="btn primary block" data-go="config">Configurar</button></div>';
+  const locais = st.oradores.filter(o => key(o.cong) === key(st.config.local));
+  return '<div class="hero"><small>Congregação local</small><b>' + esc(st.config.local) + '</b><div>' + locais.length + ' oradores locais cadastrados</div></div><div class="row"><button class="btn primary" data-act="newEnvio">Agendar envio</button><button class="btn" data-act="newProg">Agendar discurso local</button></div><p class="sub">Recebimentos e envios são registros independentes: podem ocorrer em datas diferentes. Os totais incluem programações anteriores e futuras.</p>' + '<div class="sec">Oradores locais</div>' + locais.map(o => '<div class="item"><div class="m" data-act="hist" data-t="o" data-v="' + esc(o.nome) + '"><b>' + esc(o.nome) + '</b><div>Ver histórico de discursos locais e envios</div></div><button class="btn sm" data-act="enviarOrador" data-v="' + esc(o.nome) + '">Agendar envio</button></div>').join('') + '<div class="sec">Arranjos por congregação</div>' + C.arranjos(st).map(c => '<div class="item" data-act="hist" data-t="c" data-v="' + esc(c.nome) + '"><div class="m"><b>' + esc(c.nome) + '</b><div>Recebemos: ' + c.recebidos + ' · Enviamos: ' + c.enviados + '<br>Programações futuras: ' + c.proximos + '</div></div></div>').join('');
 };
 V.dados = () => '<div class="card"><h3>Planilha (.xlsx)</h3><p class="sub">Importe a planilha do Excel (abas 2026, 2027, CADASTROS e ESBOÇOS) ou exporte seus dados em .xlsx.</p><input type="file" id="fileX" accept=".xlsx,.xls" data-chg="impFile" style="display:none"><button class="btn primary block" data-act="pickFile">Importar planilha</button><button class="btn block" data-act="expX">Exportar para planilha</button><button class="btn block" data-act="shareX">Enviar planilha para outro celular</button></div><div class="card"><h3>Backup do aplicativo</h3><p class="sub">Arquivo .json com todos os dados, para guardar ou levar para outro aparelho.</p><input type="file" id="fileJ" accept=".json,application/json" data-chg="impJson" style="display:none"><button class="btn block" data-act="expJ">Salvar backup</button><button class="btn block" data-act="pickJson">Restaurar backup</button></div><div class="card"><h3>Apagar tudo</h3><p class="sub">Remove todos os dados deste aparelho.</p><button class="btn danger block" data-act="wipe">Apagar dados</button></div><div class="sub" style="text-align:center">Os dados ficam só neste celular.</div>';
-V.config = () => '<div class="card"><div class="field"><label>Intervalo mínimo entre discursos do mesmo orador ou esboço (dias)</label><input type="number" min="0" value="' + st.config.intervalo + '" data-chg="cfgInt"></div><div class="field"><label>Dia da semana dos discursos</label><select data-chg="cfgDow">' + ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'].map((n, i) => '<option value="' + i + '" ' + (i === Number(st.config.diaSemana) ? 'selected' : '') + '>' + n + '</option>').join('') + '</select></div><div class="field"><label>Dias olhados nas pendências</label><input type="number" min="1" value="' + st.config.diasPendencias + '" data-chg="cfgPend"></div><div class="field" style="margin:0"><label>Horário padrão dos discursos (ex.: 17h)</label><input value="' + esc(st.config.horaPadrao) + '" data-chg="cfgHora"><div class="sub">Cada congregação pode ter o seu horário, em Cadastros.</div></div></div><div class="card"><h3>Mensagem de confirmação</h3><div class="sub">Marcadores: {nome} {tema} {congregacao} {data} {hora}</div><textarea style="font-family:inherit;font-size:14px;min-height:260px;margin-top:8px" data-chg="cfgModelo">' + esc(st.config.modelo || C.MODELO_PADRAO) + '</textarea><button class="btn block" style="margin-top:8px" data-act="modeloPadrao">Restaurar modelo padrão</button></div>';
+V.config = () => '<div class="card"><div class="field"><label>Nome da congregação local</label><input value="' + esc(st.config.local) + '" data-chg="cfgLocal"><div class="sub">Identifica os oradores locais pelo cadastro da congregação.</div></div><div class="field"><label>Intervalo mínimo entre discursos do mesmo orador ou esboço (dias)</label><input type="number" min="0" value="' + st.config.intervalo + '" data-chg="cfgInt"></div><div class="field"><label>Dia da semana dos discursos</label><select data-chg="cfgDow">' + ['domingo', 'segunda', 'terça', 'quarta', 'quinta', 'sexta', 'sábado'].map((n, i) => '<option value="' + i + '" ' + (i === Number(st.config.diaSemana) ? 'selected' : '') + '>' + n + '</option>').join('') + '</select></div><div class="field"><label>Dias olhados nas pendências</label><input type="number" min="1" value="' + st.config.diasPendencias + '" data-chg="cfgPend"></div><div class="field" style="margin:0"><label>Horário padrão dos discursos (ex.: 17h)</label><input value="' + esc(st.config.horaPadrao) + '" data-chg="cfgHora"><div class="sub">Cada congregação pode ter o seu horário, em Cadastros.</div></div></div><div class="card"><h3>Mensagem de confirmação</h3><div class="sub">Marcadores: {nome} {tema} {congregacao} {data} {hora}</div><textarea style="font-family:inherit;font-size:14px;min-height:260px;margin-top:8px" data-chg="cfgModelo">' + esc(st.config.modelo || C.MODELO_PADRAO) + '</textarea><button class="btn block" style="margin-top:8px" data-act="modeloPadrao">Restaurar modelo padrão</button></div>';
 V.ajuda = () => {
   const s = (t, p) => '<div class="card"><h3>' + t + '</h3><div class="sub">' + p + '</div></div>';
-  return s('Primeiros passos', '1. Em <b>Dados</b>, importe a sua planilha (.xlsx), ou cadastre oradores e esboços em <b>Cadastros</b>.<br>2. Lance os discursos em <b>Programação</b> (botão +).<br>3. Use <b>Quem escalar</b> para escolher orador e esboço para uma data.') + s('Alerta de repetição', 'Ao lançar um discurso, o aplicativo avisa se o orador ou o esboço se repete em menos dias do que o intervalo mínimo (padrão 90, em <b>Configurações</b>).') + s('Telas', '<b>Pendências</b>: o que falta confirmar, cantar ou definir.<br><b>Datas livres</b>: dias sem orador.<br><b>Rodízio</b>: quem está há mais tempo sem.<br><b>Relatórios</b>: rankings por período.<br><b>Compartilhar</b>: texto pronto para o WhatsApp.') + s('Renomear um orador', 'Em <b>Cadastros</b>, edite o nome: ele é atualizado em todos os discursos.') + s('Seus dados', 'Ficam salvos neste celular, sem internet. Faça backup em <b>Dados</b> e use a planilha para levar informações a outros aparelhos (importar pode <b>mesclar</b> com o que já existe).');
+  return s('Arranjos e oradores locais', 'Defina o nome da congregação local em <b>Configurações</b>. Cadastre seus oradores com essa congregação. Em <b>Mais → Arranjos</b>, agende envios ou discursos locais. Um orador local também pode discursar na própria congregação. Recebimentos e envios podem ter datas diferentes. Os históricos mostram origem e destino; envios não ocupam as datas livres locais. Por precaução, o mesmo orador não pode ser agendado duas vezes no mesmo dia.') + s('Telefone da agenda', 'No cadastro do orador, use <b>Escolher telefone da agenda</b> quando disponível. Escolha o contato e, se necessário, o número. O telefone só é gravado ao salvar. Em outros navegadores, digite ou cole o número.') + s('Primeiros passos', '1. Em <b>Dados</b>, importe a sua planilha (.xlsx), ou cadastre oradores e esboços em <b>Cadastros</b>.<br>2. Lance os discursos em <b>Programação</b> (botão +).<br>3. Use <b>Quem escalar</b> para escolher orador e esboço para uma data.') + s('Alerta de repetição', 'Ao lançar um discurso, o aplicativo avisa se o orador ou o esboço se repete em menos dias do que o intervalo mínimo (padrão 90, em <b>Configurações</b>).') + s('Telas', '<b>Pendências</b>: o que falta confirmar, cantar ou definir.<br><b>Datas livres</b>: dias sem orador.<br><b>Rodízio</b>: quem está há mais tempo sem.<br><b>Relatórios</b>: rankings por período.<br><b>Compartilhar</b>: texto pronto para o WhatsApp.') + s('Renomear um orador', 'Em <b>Cadastros</b>, edite o nome: ele é atualizado em todos os discursos.') + s('Seus dados', 'Ficam salvos neste celular, sem internet. Faça backup em <b>Dados</b> e use a planilha para levar informações a outros aparelhos (importar pode <b>mesclar</b> com o que já existe).');
 };
 
 
 function histItem(x, tipo) {
   const tema = x.esboco ? 'Nº ' + x.esboco + ' · ' + esc(x.tema) : 'tema a definir';
   const l1 = tipo === 'o' ? tema : esc(x.orador || 'Orador a definir');
-  const l2 = tipo === 'c' ? tema : esc(x.cong || '');
+  const l2 = (tipo === 'c' ? tema + '<br>' : '') + (x.tipo === 'envio' ? 'Envio: ' : 'Local: ') + esc(x.origem || 'origem a definir') + ' → ' + esc(x.destino || 'congregação local');
   const fut = x.d >= D.today();
   const chips = fut ? (norm(x.confirmado).toUpperCase() === 'SIM' ? '<span class="chip ok">confirmado</span>' : (x.pedido ? '<span class="chip">pedido enviado em ' + D.br(D.parse(x.pedido)) + '</span>' : '<span class="chip warn">sem confirmação</span>')) : '';
   return '<div class="item" data-act="editProg" data-id="' + x.id + '"><div class="m"><b>' + D.brFull(x.d) + ' (' + D.dow3(x.d) + ')</b><div>' + l1 + '</div><div>' + l2 + '</div>' + chips + '</div></div>';
@@ -161,12 +168,12 @@ V.hist = () => {
   if (hh.tipo === 'o') { const o = st.oradores.find(x => key(x.nome) === key(hh.id)); kind = 'Orador'; title = hh.id; sub = (o && o.cong ? esc(o.cong) : 'sem congregação') + (o && o.fone ? ' · ' + esc(o.fone) : ''); if (o && o.cong) extra = '<button class="btn sm" data-act="hist" data-t="c" data-v="' + esc(o.cong) + '">Ver congregação</button>'; }
   if (hh.tipo === 'c') { kind = 'Congregação'; title = hh.id; const n = st.oradores.filter(o => key(o.cong) === key(hh.id)).length; sub = n + (n === 1 ? ' orador' : ' oradores') + (st.horarios[key(hh.id)] ? ' · discursos às ' + esc(st.horarios[key(hh.id)]) : ''); }
   if (hh.tipo === 'e') { kind = 'Esboço'; title = 'Nº ' + hh.id; sub = esc(C.temaDe(st, hh.id)); }
-  const who = hh.tipo === 'e' ? 'Vezes utilizado' : 'Discursos proferidos';
+  const who = hh.tipo === 'e' ? 'Vezes utilizado' : 'Registros anteriores';
   let h = '<div class="hero"><small>' + kind + '</small><b>' + esc(title) + '</b><div>' + sub + '</div></div>';
   h += '<div class="kpis"><div class="kpi"><b>' + H.past.length + '</b><span>' + who + '</span></div><div class="kpi ' + (H.future.length ? 'ok' : '') + '"><b>' + H.future.length + '</b><span>Programados</span></div><div class="kpi"><b>' + (H.last ? D.br(H.last.d) : '—') + '</b><span>Último' + (H.last ? ' · ' + fmtDias(t - H.last.d) : '') + '</span></div><div class="kpi"><b>' + (H.next ? D.br(H.next.d) : '—') + '</b><span>Próximo' + (H.next ? ' · em ' + fmtDias(H.next.d - t) : '') + '</span></div></div>';
   h += '<div class="row" style="margin:0 0 8px"><button class="btn sm" data-act="editFromHist">Editar cadastro</button>' + extra + '</div>';
   h += '<div class="sec">Próximas programações (' + H.future.length + ')</div>' + (H.future.length ? H.future.map(x => histItem(x, hh.tipo)).join('') : '<div class="empty" style="padding:14px">Nenhuma programação futura.</div>');
-  h += '<div class="sec">Já proferidos (' + H.past.length + ')</div>' + (H.past.length ? H.past.map(x => histItem(x, hh.tipo)).join('') : '<div class="empty" style="padding:14px">Nenhum discurso proferido ainda.</div>');
+  h += '<div class="sec">Programações anteriores (' + H.past.length + ')</div>' + (H.past.length ? H.past.map(x => histItem(x, hh.tipo)).join('') : '<div class="empty" style="padding:14px">Nenhum discurso proferido ainda.</div>');
   return h;
 };
 V.msgs = () => {
@@ -175,7 +182,7 @@ V.msgs = () => {
   h += '<div class="kpis"><div class="kpi ' + (novos ? 'warn' : 'ok') + '"><b>' + novos + '</b><span>Confirmações a pedir</span></div><div class="kpi"><b>' + (L.length - novos) + '</b><span>Aguardando resposta</span></div></div>';
   if (!L.length) return h + '<div class="empty">Todos os oradores do período já confirmaram. 🎉</div>';
   const t = D.today();
-  L.forEach(r => { h += '<div class="item"><div class="m" data-act="editProg" data-id="' + r.id + '"><b>' + esc(r.orador) + '</b><div>' + D.brFull(r.d) + ' (' + D.dow3(r.d) + ') · ' + (r.d === t ? 'hoje' : 'faltam ' + fmtDias(r.d - t)) + '<br>' + esc(r.cong || '') + (r.esboco ? ' · Nº ' + r.esboco : '') + '</div>' + (r.status === 'novo' ? '<span class="chip warn">ainda não pedido</span>' : '<span class="chip">pedido ' + (r.diasPedido === 0 ? 'hoje' : 'há ' + fmtDias(r.diasPedido)) + '</span>') + (r.fone ? '' : '<span class="chip">sem telefone</span>') + '</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm primary" data-act="msg" data-id="' + r.id + '">' + (r.status === 'novo' ? 'Pedir' : 'Reenviar') + '</button><button class="btn sm" data-act="confirmar" data-id="' + r.id + '">Confirmou</button></div></div>'; });
+  L.forEach(r => { h += '<div class="item"><div class="m" data-act="editProg" data-id="' + r.id + '"><b>' + esc(r.orador) + '</b><div>' + D.brFull(r.d) + ' (' + D.dow3(r.d) + ') · ' + (r.d === t ? 'hoje' : 'faltam ' + fmtDias(r.d - t)) + '<br>' + (r.tipo === 'envio' ? 'Envio: ' : 'Local: ') + esc(r.origem || '') + ' → ' + esc(r.destino || 'congregação local') + (r.esboco ? ' · Nº ' + r.esboco : '') + '</div>' + (r.status === 'novo' ? '<span class="chip warn">ainda não pedido</span>' : '<span class="chip">pedido ' + (r.diasPedido === 0 ? 'hoje' : 'há ' + fmtDias(r.diasPedido)) + '</span>') + (r.fone ? '' : '<span class="chip">sem telefone</span>') + '</div><div style="display:flex;flex-direction:column;gap:6px"><button class="btn sm primary" data-act="msg" data-id="' + r.id + '">' + (r.status === 'novo' ? 'Pedir' : 'Reenviar') + '</button><button class="btn sm" data-act="confirmar" data-id="' + r.id + '">Confirmou</button></div></div>'; });
   return h;
 };
 function openMsg(id) {
@@ -193,24 +200,29 @@ function openHist(t, v) { if (ui.route === 'hist') ui.hstack.push({ ...ui.hist }
 /* ---------- formulário de discurso ---------- */
 function openProg(init, id) {
   const p = id ? st.prog.find(x => x.id === id) : null;
-  ui.form = Object.assign({ id: null, data: nextDate(), orador: '', esboco: '', cantico: '', imagens: '', confirmado: '' }, p ? { ...p, esboco: p.esboco == null ? '' : p.esboco } : {}, init || {});
+  ui.form = Object.assign({ id: null, data: nextDate(), tipo: 'local', origem: '', destino: '', orador: '', esboco: '', cantico: '', imagens: '', confirmado: '' }, p ? { ...p, esboco: p.esboco == null ? '' : p.esboco } : {}, init || {});
   ui.form.id = id || null;
   const f = ui.form;
   const opt = (v, cur, t) => '<option value="' + v + '" ' + (v === cur ? 'selected' : '') + '>' + t + '</option>';
   let ops = '<option value="">— definir depois —</option>' + sortedOrad().map(o => '<option value="' + esc(o.nome) + '" ' + (key(o.nome) === key(f.orador) ? 'selected' : '') + '>' + esc(o.nome) + (o.cong ? ' — ' + esc(o.cong) : '') + '</option>').join('');
   if (f.orador && !st.oradores.some(o => key(o.nome) === key(f.orador))) ops += '<option selected value="' + esc(f.orador) + '">' + esc(f.orador) + ' (não cadastrado)</option>';
-  sheet('<h2>' + (id ? 'Editar discurso' : 'Novo discurso') + '</h2><div id="alertbox"></div><div class="field"><label>Data</label><input type="date" id="f_data" value="' + esc(f.data) + '" data-inp="formChg"></div><div class="field"><label>Orador</label><select id="f_orad" data-chg="formChg">' + ops + '</select><div class="sub" id="f_cong"></div></div><div class="field"><label>Nº do esboço</label><input type="number" inputmode="numeric" id="f_esb" value="' + esc(f.esboco) + '" data-inp="formChg"><div class="sub" id="f_tema"></div></div><div class="row"><div class="field"><label>Cântico</label><input type="text" inputmode="numeric" id="f_cant" value="' + esc(f.cantico) + '"></div><div class="field"><label>Imagens</label><select id="f_img">' + opt('', f.imagens, '—') + opt('SIM', f.imagens, 'SIM') + opt('NÃO', f.imagens, 'NÃO') + '</select></div><div class="field"><label>Confirmado</label><select id="f_conf">' + opt('', f.confirmado, '—') + opt('SIM', f.confirmado, 'SIM') + opt('NÃO', f.confirmado, 'NÃO') + '</select></div></div><div class="field"><label>Horário (opcional)</label><input id="f_hora" value="' + esc(f.hora || '') + '" placeholder="padrão da congregação"></div><div class="row" style="margin:0 0 8px">' + (f.orador ? '<button class="btn sm" data-act="hist" data-t="o" data-v="' + esc(f.orador) + '">Histórico do orador</button>' : '') + (f.esboco !== '' && f.esboco != null ? '<button class="btn sm" data-act="hist" data-t="e" data-v="' + f.esboco + '">Histórico do esboço</button>' : '') + '</div><button class="btn primary block" data-act="saveProg">Salvar</button><button class="btn block" data-act="saveMsg">Salvar e pedir confirmação</button>' + (id ? '<button class="btn danger block" data-act="delProg">Excluir discurso</button>' : '') + '<button class="btn block" data-act="closeSheet">Cancelar</button>');
+  if (!f.origem) f.origem = C.origemDe(st, f);
+  if (!f.destino) f.destino = C.destinoDe(st, f);
+  const arrangementFields = '<div class="field"><label>Modalidade</label><select id="f_tipo" data-chg="formTipo">' + opt('local', f.tipo || 'local', 'Na congregação local') + opt('envio', f.tipo, 'Envio para outra congregação') + '</select></div><div class="field"><label>Congregação onde será o discurso</label><select id="f_dest" data-chg="formChg">' + congOptions(f.destino) + '</select><div class="sub">Para envios, escolha a congregação que receberá o orador local.</div></div>';
+  sheet('<h2>' + (id ? 'Editar discurso' : 'Novo discurso') + '</h2>' + arrangementFields + '<div id="alertbox"></div><div class="field"><label>Data</label><input type="date" id="f_data" value="' + esc(f.data) + '" data-inp="formChg"></div><div class="field"><label>Orador</label><select id="f_orad" data-chg="formChg">' + ops + '</select><div class="sub" id="f_cong"></div></div><div class="field"><label>Nº do esboço</label><input type="number" inputmode="numeric" id="f_esb" value="' + esc(f.esboco) + '" data-inp="formChg"><div class="sub" id="f_tema"></div></div><div class="row"><div class="field"><label>Cântico</label><input type="text" inputmode="numeric" id="f_cant" value="' + esc(f.cantico) + '"></div><div class="field"><label>Imagens</label><select id="f_img">' + opt('', f.imagens, '—') + opt('SIM', f.imagens, 'SIM') + opt('NÃO', f.imagens, 'NÃO') + '</select></div><div class="field"><label>Confirmado</label><select id="f_conf">' + opt('', f.confirmado, '—') + opt('SIM', f.confirmado, 'SIM') + opt('NÃO', f.confirmado, 'NÃO') + '</select></div></div><div class="field"><label>Horário (opcional)</label><input id="f_hora" value="' + esc(f.hora || '') + '" placeholder="padrão da congregação"></div><div class="row" style="margin:0 0 8px">' + (f.orador ? '<button class="btn sm" data-act="hist" data-t="o" data-v="' + esc(f.orador) + '">Histórico do orador</button>' : '') + (f.esboco !== '' && f.esboco != null ? '<button class="btn sm" data-act="hist" data-t="e" data-v="' + f.esboco + '">Histórico do esboço</button>' : '') + '</div><button class="btn primary block" data-act="saveProg">Salvar</button><button class="btn block" data-act="saveMsg">Salvar e pedir confirmação</button>' + (id ? '<button class="btn danger block" data-act="delProg">Excluir discurso</button>' : '') + '<button class="btn block" data-act="closeSheet">Cancelar</button>');
+  $('#f_dest').disabled = f.tipo !== 'envio';
   formChg();
 }
 function readForm() {
-  const f = ui.form; f.data = $('#f_data').value; f.orador = $('#f_orad').value; const e = C.num($('#f_esb').value); f.esboco = e == null ? '' : e; return f;
+  const f = ui.form; f.data = $('#f_data').value; const selected = $('#f_orad').value; if (key(f.orador) !== key(selected)) f.origem = C.congDe(st, selected); f.orador = selected; f.tipo = $('#f_tipo').value; f.destino = $('#f_dest').value; const e = C.num($('#f_esb').value); f.esboco = e == null ? '' : e; return f;
 }
 function formChg() {
   if (!$('#f_data')) return; const f = readForm(), box = $('#alertbox');
-  $('#f_cong').textContent = f.orador ? 'Congregação: ' + (C.congDe(st, f.orador) || '—') : '';
+  $('#f_cong').textContent = f.orador ? 'Congregação: ' + (f.origem || '—') : '';
   const tema = f.esboco === '' ? '' : (C.temaDe(st, f.esboco) || 'Esboço não encontrado'); $('#f_tema').textContent = tema;
   if (!f.data) { box.innerHTML = ''; return; }
-  const al = C.alerta(st, { id: f.id, data: f.data, orador: f.orador, esboco: f.esboco === '' ? null : f.esboco }), N = st.config.intervalo; let m = [];
+  const al = C.alerta(st, f), N = st.config.intervalo; let m = [];
+  if (al.conflito) m.push('Este orador já tem outro discurso no mesmo dia.');
   if (al.orador) m.push('Orador repetido: já tem discurso em ' + D.brFull(D.parse(al.orador.data)) + ' (menos de ' + N + ' dias).');
   if (al.esboco) m.push('Esboço repetido: usado em ' + D.brFull(D.parse(al.esboco.data)) + ' por ' + (al.esboco.orador || 'orador a definir') + ' (menos de ' + N + ' dias).');
   box.className = m.length ? 'alertbox' : ''; box.innerHTML = m.map(x => '⚠ ' + esc(x)).join('<br>');
@@ -218,17 +230,38 @@ function formChg() {
 function saveProg(thenMsg) {
   const f = readForm(); if (!Number.isFinite(D.parse(f.data))) return toast('Escolha uma data válida.');
   if (f.esboco !== '' && (!Number.isInteger(f.esboco) || f.esboco <= 0)) return toast('Informe um número de esboço inteiro e positivo.');
+  if (!norm(st.config.local)) return toast('Defina a congregação local em Configurações.');
+  if (f.tipo === 'local') f.destino = st.config.local;
+  if (f.tipo === 'envio' && (!norm(f.orador) || key(f.id ? f.origem : C.congDe(st, f.orador)) !== key(st.config.local) || !f.destino || key(f.destino) === key(st.config.local))) return toast('Escolha um orador local e uma congregação de destino diferente.');
+  if (C.alerta(st, f).conflito) return toast('O orador já tem um discurso nessa data.');
   const cv = norm($('#f_cant').value), old = f.id ? st.prog.find(x => x.id === f.id) : null;
-  const entry = { id: f.id || C.newId(), data: f.data, orador: norm(f.orador), esboco: f.esboco === '' ? null : f.esboco, cantico: cv === '' ? '' : (C.num(cv) != null ? C.num(cv) : cv), imagens: $('#f_img').value, confirmado: $('#f_conf').value, hora: norm($('#f_hora').value), pedido: old && key(old.orador) === key(f.orador) ? (old.pedido || '') : '' };
+  const entry = { tipo: f.tipo, origem: f.id ? (f.origem || C.congDe(st, f.orador)) : C.congDe(st, f.orador), destino: f.destino, id: f.id || C.newId(), data: f.data, orador: norm(f.orador), esboco: f.esboco === '' ? null : f.esboco, cantico: cv === '' ? '' : (C.num(cv) != null ? C.num(cv) : cv), imagens: $('#f_img').value, confirmado: $('#f_conf').value, hora: norm($('#f_hora').value), pedido: old && key(old.orador) === key(f.orador) && old.data === f.data && key(C.destinoDe(st, old)) === key(f.destino) ? (old.pedido || '') : '' };
+  if (old && (key(old.orador) !== key(entry.orador) || old.data !== entry.data || key(C.destinoDe(st, old)) !== key(entry.destino))) entry.confirmado = '';
   const i = st.prog.findIndex(x => x.id === entry.id); if (i >= 0) st.prog[i] = entry; else st.prog.push(entry);
   ui.esc.draft = {}; save();
   if (thenMsg === true) { render(); openMsg(entry.id); } else { closeSheet(); render(); toast('Discurso salvo.'); }
 }
 /* ---------- cadastros ---------- */
 function congOptions(cur) { return '<option value="">— sem congregação —</option>' + C.allCongs(st).map(c => '<option value="' + esc(c) + '" ' + (key(c) === key(cur) ? 'selected' : '') + '>' + esc(c) + '</option>').join(''); }
+function contactControl() {
+  return window.isSecureContext && navigator.contacts && typeof navigator.contacts.select === 'function'
+    ? '<button class="btn block" style="margin-top:8px" data-act="pickContact">Escolher telefone da agenda</button><div id="contactNumbers"></div>'
+    : '<div class="sub">A seleção da agenda não está disponível neste navegador. Digite ou cole o telefone.</div>';
+}
+async function pickContact() {
+  try {
+    const form = ui.form;
+    const contacts = await navigator.contacts.select(['tel'], { multiple: false });
+    if (ui.form !== form || !document.querySelector('#o_fone')) return;
+    const phones = [...new Set((contacts[0]?.tel || []).map(norm).filter(Boolean))];
+    if (!phones.length) { if (contacts.length) toast('O contato não compartilhou um telefone.'); return; }
+    if (phones.length === 1) { $('#o_fone').value = phones[0]; toast('Telefone preenchido. Salve o cadastro.'); }
+    else $('#contactNumbers').innerHTML = '<label>Escolha o número</label><select data-chg="contactNumber"><option value="">— selecionar —</option>' + phones.map(n => '<option value="' + esc(n) + '">' + esc(n) + '</option>').join('') + '</select>';
+  } catch (e) { if (e.name !== 'AbortError') toast('Não foi possível abrir a agenda. Digite ou cole o telefone.'); }
+}
 function openOrad(i) {
   const o = i == null ? { nome: '', cong: '' } : st.oradores[i]; ui.form = { i };
-  sheet('<h2>' + (i == null ? 'Novo orador' : 'Editar orador') + '</h2><div class="field"><label>Nome</label><input id="o_nome" value="' + esc(o.nome) + '"></div><div class="field"><label>Congregação</label><select id="o_cong">' + congOptions(o.cong) + '</select></div><div class="field"><label>Ou digite uma nova congregação</label><input id="o_nova" placeholder="Opcional"></div><div class="field"><label>Telefone / WhatsApp</label><input id="o_fone" inputmode="tel" placeholder="(98) 99999-0000" value="' + esc(o.fone || '') + '"></div><button class="btn primary block" data-act="saveOrad">Salvar</button>' + (i == null ? '' : '<button class="btn danger block" data-act="delOrad">Excluir orador</button>') + '<button class="btn block" data-act="closeSheet">Cancelar</button>');
+  sheet('<h2>' + (i == null ? 'Novo orador' : 'Editar orador') + '</h2><div class="field"><label>Nome</label><input id="o_nome" value="' + esc(o.nome) + '"></div><div class="field"><label>Congregação</label><select id="o_cong">' + congOptions(o.cong) + '</select></div><div class="field"><label>Ou digite uma nova congregação</label><input id="o_nova" placeholder="Opcional"></div><div class="field"><label>Telefone / WhatsApp</label><input id="o_fone" inputmode="tel" placeholder="(98) 99999-0000" value="' + esc(o.fone || '') + '">' + contactControl() + '</div><button class="btn primary block" data-act="saveOrad">Salvar</button>' + (i == null ? '' : '<button class="btn danger block" data-act="delOrad">Excluir orador</button>') + '<button class="btn block" data-act="closeSheet">Cancelar</button>');
 }
 function openCong(name) {
   ui.form = { name }; sheet('<h2>' + (name == null ? 'Nova congregação' : 'Editar congregação') + '</h2><div class="field"><label>Nome</label><input id="c_nome" value="' + esc(name || '') + '"></div><div class="field"><label>Horário dos discursos (ex.: 17h)</label><input id="c_hora" value="' + esc(name == null ? '' : (st.horarios[key(name)] || '')) + '" placeholder="usa o horário padrão"></div><button class="btn primary block" data-act="saveCong">Salvar</button>' + (name == null ? '' : '<button class="btn danger block" data-act="delCong">Excluir congregação</button>') + '<button class="btn block" data-act="closeSheet">Cancelar</button>');
@@ -248,6 +281,8 @@ function ensureXLSX() {
 function download(blob, name) { const a = document.createElement('a'); a.href = URL.createObjectURL(blob); a.download = name; document.body.appendChild(a); a.click(); setTimeout(() => { URL.revokeObjectURL(a.href); a.remove(); }, 1500); }
 const XMIME = 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet';
 function applyImport(res, mode) {
+  if (res.config?.local && st.config.local && key(res.config.local) !== key(st.config.local)) return toast('A planilha pertence a outra congregação local. Use um backup separado.');
+  if (res.config?.local && !st.config.local) st.config.local = res.config.local;
   if (mode === 'replace') {
     if (res.oradores.length) { st.oradores = res.oradores; st.congregacoes = res.congregacoes; st.horarios = Object.assign({}, res.horarios); }
     if (res.esbocos.length) st.esbocos = res.esbocos;
@@ -258,13 +293,13 @@ function applyImport(res, mode) {
     res.congregacoes.forEach(c => { if (!st.congregacoes.some(x => key(x) === key(c))) st.congregacoes.push(c); });
     res.esbocos.forEach(e => { const x = st.esbocos.find(y => y.n === e.n); if (x) x.tema = e.tema; else st.esbocos.push(e); });
     st.esbocos.sort((a, b) => a.n - b.n);
-    res.prog.forEach(p => { if (!st.prog.some(x => x.data === p.data && key(x.orador) === key(p.orador) && Number(x.esboco) === Number(p.esboco))) st.prog.push(p); });
+    res.prog.forEach(p => { if (!st.prog.some(x => x.data === p.data && key(x.orador) === key(p.orador) && Number(x.esboco) === Number(p.esboco) && (x.tipo || 'local') === (p.tipo || 'local') && key(C.destinoDe(st, x)) === key(C.destinoDe(st, p)))) st.prog.push(p); });
   }
   save(); closeSheet(); go('inicio'); toast('Dados importados.');
 }
 /* ---------- ações ---------- */
 const A = {
-  closeSheet, newProg: () => openProg(), editProg: el => openProg({}, el.dataset.id), saveProg: () => saveProg(false), saveMsg: () => saveProg(true),
+  pickContact, enviarOrador: el => openProg({tipo:'envio', orador:el.dataset.v, destino:''}), newEnvio: () => openProg({tipo:'envio', destino:''}), closeSheet, newProg: () => openProg(), editProg: el => openProg({}, el.dataset.id), saveProg: () => saveProg(false), saveMsg: () => saveProg(true),
   hist: el => openHist(el.dataset.t, el.dataset.v),
   editFromHist: () => { const h = ui.hist; if (h.tipo === 'o') { const i = st.oradores.findIndex(o => key(o.nome) === key(h.id)); if (i >= 0) openOrad(i); } else if (h.tipo === 'c') openCong(h.id); else openEsb(Number(h.id)); },
   msg: el => openMsg(el.dataset.id),
@@ -293,20 +328,20 @@ const A = {
     const nome = norm($('#o_nome').value); if (!nome) return toast('Digite o nome.');
     const cong = norm($('#o_nova').value) || $('#o_cong').value, fone = norm($('#o_fone').value), i = ui.form.i;
     if (st.oradores.some((o, k) => k !== i && key(o.nome) === key(nome))) return toast('Já existe um orador com esse nome.');
-    if (i == null) st.oradores.push({ nome, cong, fone }); else { const old = st.oradores[i].nome; st.oradores[i] = { nome, cong, fone }; if (key(old) !== key(nome) || old !== nome) st.prog.forEach(p => { if (key(p.orador) === key(old)) p.orador = nome; }); }
+    if (i == null) st.oradores.push({ nome, cong, fone }); else { const old = st.oradores[i].nome; st.prog.forEach(p => { if (key(p.orador) === key(old) && !norm(p.origem)) p.origem = st.oradores[i].cong; }); st.oradores[i] = { nome, cong, fone }; if (key(old) !== key(nome) || old !== nome) st.prog.forEach(p => { if (key(p.orador) === key(old)) p.orador = nome; }); }
     save(); closeSheet(); render(); toast('Orador salvo.');
   },
-  delOrad: () => { const o = st.oradores[ui.form.i], n = st.prog.filter(p => key(p.orador) === key(o.nome)).length; if (confirm('Excluir ' + o.nome + '?' + (n ? '\nOs ' + n + ' discursos dele continuam na programação.' : ''))) { st.oradores.splice(ui.form.i, 1); save(); closeSheet(); render(); } },
+  delOrad: () => { const o = st.oradores[ui.form.i], n = st.prog.filter(p => key(p.orador) === key(o.nome)).length; if (confirm('Excluir ' + o.nome + '?' + (n ? '\nOs ' + n + ' discursos dele continuam na programação.' : ''))) { st.prog.forEach(p => { if (key(p.orador) === key(o.nome) && !norm(p.origem)) p.origem = o.cong; }); st.oradores.splice(ui.form.i, 1); save(); closeSheet(); render(); } },
   newCong: () => openCong(null), editCong: el => openCong(el.dataset.v),
   saveCong: () => {
     const nome = norm($('#c_nome').value), hora = norm($('#c_hora').value), old = ui.form.name; if (!nome) return toast('Digite o nome.');
     if (C.allCongs(st).some(c => key(c) === key(nome) && key(c) !== key(old))) return toast('Essa congregação já existe.');
     if (old == null) { if (C.allCongs(st).some(c => key(c) === key(nome))) return toast('Essa congregação já existe.'); st.congregacoes.push(nome); }
-    else { st.oradores.forEach(o => { if (key(o.cong) === key(old)) o.cong = nome; }); st.congregacoes = st.congregacoes.map(c => key(c) === key(old) ? nome : c); delete st.horarios[key(old)]; }
+    else { if (key(st.config.local) === key(old)) st.config.local = nome; st.prog.forEach(p => { if (key(p.origem) === key(old)) p.origem = nome; if (key(p.destino) === key(old)) p.destino = nome; }); st.oradores.forEach(o => { if (key(o.cong) === key(old)) o.cong = nome; }); st.congregacoes = st.congregacoes.map(c => key(c) === key(old) ? nome : c); delete st.horarios[key(old)]; }
     if (hora) st.horarios[key(nome)] = hora; else delete st.horarios[key(nome)];
     save(); closeSheet(); render(); toast('Congregação salva.');
   },
-  delCong: () => { const old = ui.form.name; if (st.oradores.some(o => key(o.cong) === key(old))) return toast('Há oradores nessa congregação. Mude-os antes.'); if (confirm('Excluir ' + old + '?')) { st.congregacoes = st.congregacoes.filter(c => key(c) !== key(old)); delete st.horarios[key(old)]; save(); closeSheet(); render(); } },
+  delCong: () => { const old = ui.form.name; if (key(st.config.local) === key(old) || C.rows(st).some(r => C.participa(r, old))) return toast('Esta congregação está vinculada à configuração ou ao histórico.'); if (st.oradores.some(o => key(o.cong) === key(old))) return toast('Há oradores nessa congregação. Mude-os antes.'); if (confirm('Excluir ' + old + '?')) { st.congregacoes = st.congregacoes.filter(c => key(c) !== key(old)); delete st.horarios[key(old)]; save(); closeSheet(); render(); } },
   newEsb: () => openEsb(null), editEsb: el => openEsb(Number(el.dataset.v)),
   saveEsb: () => {
     const n = C.num($('#e_n').value), tema = norm($('#e_tema').value), old = ui.form.n; if (!Number.isInteger(n) || n <= 0 || !tema) return toast('Informe o número e o tema.');
@@ -324,6 +359,10 @@ const A = {
   instalar: () => { const e = window.__installEv; if (e) { e.prompt(); window.__installEv = null; } }
 };
 const CH = {
+  progTipo: el => { ui.prog.tipo = el.value; render(); },
+  contactNumber: el => { if (el.value) $('#o_fone').value = el.value; },
+  formTipo: el => { ui.form.tipo = el.value; $('#f_dest').disabled = el.value !== 'envio'; $('#f_dest').value = el.value === 'local' ? st.config.local : ''; formChg(); },
+  cfgLocal: el => { const name = norm(el.value); if (st.config.local && key(name) !== key(st.config.local) && st.prog.length) { toast('Para preservar os arranjos, renomeie a congregação no cadastro.'); el.value = st.config.local; return; } st.config.local = name; if (name) st.prog.forEach(p => { if (!p.tipo || p.tipo === 'local') { p.tipo = 'local'; if (!p.destino) p.destino = name; if (!p.origem) p.origem = C.congDe(st, p.orador); } }); save(); toast('Congregação local salva.'); },
   escData: el => { ui.esc.data = el.value; render(); }, escInt: el => { ui.esc.int = Math.max(0, Number(el.value) || 0); render(); }, escCong: el => { ui.esc.cong = el.value; ui.esc.no = 8; render(); },
   pendDias: el => { ui.pend.dias = Number(el.value); render(); }, msgDias: el => { ui.msgs.dias = Number(el.value); render(); },
   cfgHora: el => { st.config.horaPadrao = norm(el.value); save(); toast('Salvo.'); }, cfgModelo: el => { st.config.modelo = el.value.trim() === C.MODELO_PADRAO ? '' : el.value; save(); toast('Salvo.'); },

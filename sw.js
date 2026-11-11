@@ -1,4 +1,4 @@
-const V = 'oradores-76e3e54ed22c95e6';
+const V = 'oradores-8968315a554d55a2';
 const PREFIX = 'lista-oradores:' + self.registration.scope + ':';
 const CACHE = PREFIX + V;
 const FILES = ['./','index.html','manifest.json','xlsx.full.min.js','icone_app_192.png','icone_app_512.png','icone_app_512_maskable.png'];
