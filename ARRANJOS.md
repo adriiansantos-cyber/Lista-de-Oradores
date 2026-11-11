@@ -26,7 +26,15 @@ As datas, horários, esboços, confirmações e pedidos continuam no próprio re
 
 O histórico do orador reúne seus discursos em casa e fora. O histórico da congregação reúne os eventos em que ela participa como origem ou destino, contando o evento uma vez. Rodízio e relatórios de congregações consideram ambas as participações. A tela Arranjos separa os totais enviados e recebidos de cada parceira.
 
-Envios não ocupam datas livres locais nem entram no próximo discurso e totais locais da tela inicial. Pendências, confirmações e compartilhamento incluem ambas as modalidades, identificando o destino. O horário e a mensagem de confirmação usam a congregação de destino. O alerta de repetição de esboço considera o mesmo destino; o alerta de repetição do orador mantém o intervalo configurado. O mesmo orador não pode ser agendado duas vezes no mesmo dia, mesmo com intervalo zero — regra conservadora que também bloqueia horários diferentes.
+A tela inicial separa a programação local dos envios, com cards para o próximo discurso local e o próximo envio, totais separados, próximos envios e botões de agendamento, consulta e compartilhamento.
+
+Envios não ocupam datas livres locais nem entram nos totais locais. As pendências de confirmação e a lista de confirmações consideram apenas discursos locais. Envios não geram alertas de repetição de orador ou esboço e também não contam como repetições na programação local. O mesmo orador não pode ser agendado duas vezes no mesmo dia, mesmo com intervalo zero: esse bloqueio trata conflito de agenda, inclusive em horários diferentes.
+
+Ao salvar um envio, o aplicativo abre um **informe da programação**, sem pedido de confirmação, com congregação de destino, data, horário, número do esboço e tema. O usuário pode editar, copiar ou abrir o texto no WhatsApp. Abrir o WhatsApp não comprova a entrega da mensagem, e os informes não criam pedidos de confirmação.
+
+Em **Compartilhar**, selecione a modalidade e o período. Para envios, escolha todos os oradores ou um nome para gerar somente a programação dele. A lista de nomes inclui os registros históricos de envio, mesmo que o cadastro do orador tenha mudado.
+
+Os rankings possuem filtro entre discurso local e envio. O histórico também permite filtrar por essas modalidades ou consultar todas; ao abrir pelo ranking, mantém a modalidade selecionada. Contagens de ranking incluem todos os registros lançados no período, inclusive futuros.
 
 **Quem escalar** continua voltado à programação local: considera os compromissos externos no mesmo dia para disponibilidade e o uso local dos esboços. Para enviar oradores, use Arranjos.
 
@@ -40,12 +48,12 @@ O Excel exportado contém as colunas `TIPO`, `ORIGEM`, `DESTINO` nas abas dos an
 
 No cadastro do orador, **Escolher telefone da agenda** aparece quando o navegador disponibiliza `navigator.contacts.select` em contexto seguro. O botão pede apenas telefones de um contato escolhido pelo usuário. Se houver vários números, o aplicativo permite selecionar um deles. Cancelar não altera o cadastro. O telefone só é persistido ao salvar o orador.
 
-A Contact Picker API tem disponibilidade limitada; a documentação do Chrome descreve seu uso no Android, com HTTPS, página principal e interação explícita. Quando indisponível, o campo manual permanece e a interface explica que se deve digitar ou colar o número. Não há acesso automático à agenda inteira.
+A Contact Picker API tem disponibilidade limitada; a documentação do Chrome descreve seu uso no Android, com HTTPS, página principal e interação explícita. Quando indisponível, o campo manual permanece e a interface explica que se deve digitar ou colar o número. Não há acesso automático à agenda inteira. A opção **Importar contato (.vcf)** permite escolher um contato exportado da agenda pelo seletor de arquivos; quando houver vários telefones ou contatos, escolha um número na lista. O importador lê campos TEL comuns de vCard 3/4, inclusive números com prefixo tel:, sem gravar automaticamente o nome ou o telefone. A leitura do arquivo não depende da Contact Picker API. Consulte também [APK-AGENDA.md](APK-AGENDA.md).
 
 Referências: [Chrome](https://developer.chrome.com/docs/capabilities/web-apis/contact-picker), [MDN](https://developer.mozilla.org/en-US/docs/Web/API/Contact_Picker_API).
 
 ## Validação e publicação
 
-Execute `node build.js` e `node review.test.cjs`. Os testes cobrem regras de arranjos, histórico, datas livres locais, conflitos, horários, migração, ida e volta pelo Excel e fluxos de cadastro/agenda com DOM e API simulados. O seletor nativo ainda precisa de validação em um celular compatível, após publicar por HTTPS.
+Execute `node build.js`, `node review.test.cjs` e `node fine-tuning.test.cjs`. Os testes cobrem regras de arranjos, histórico, datas livres locais, conflitos, horários, migração, ida e volta pelo Excel e fluxos de cadastro/agenda com DOM e API simulados. Os testes adicionais cobrem painel inicial, ausência de repetição e confirmação para envios, informes, filtros de compartilhamento/ranking/histórico e importação VCF. As telas e APIs são testadas com DOM simulado; o APK e o seletor nativo ainda precisam de validação em um celular compatível, após publicar por HTTPS.
 
 Os arquivos foram preparados localmente. Para disponibilizar a atualização, publique os arquivos regenerados no GitHub Pages, incluindo `index.html`, `sw.js`, `manifest.json`, biblioteca XLSX e ícones.

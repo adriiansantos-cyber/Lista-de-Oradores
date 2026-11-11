@@ -65,7 +65,7 @@ assert.equal(C.arranjos(arrangements).find(c=>c.nome==='Norte').recebidos,1);
 assert.equal(C.datasLivres(arrangements,'2026-11-15','2026-11-15',0).length,1);
 assert.equal(C.indicadores(arrangements,D.parse('2026-11-11')).prox.id,'b');
 assert.equal(C.horaDe(arrangements,arrangements.prog[0]),'19h');
-assert.ok(C.mensagemConfirmacao(arrangements,arrangements.prog[0]).includes('congregação: Norte'));
+assert.ok(C.mensagemConfirmacao(arrangements,arrangements.prog[0]).includes('Congregação: Norte'));
 assert.equal(C.alerta(arrangements,{...base,id:'d',data:'2026-11-15',orador:'Local',tipo:'local',destino:'Central'}).conflito.id,'a');
 assert.equal(C.alerta(arrangements,{...base,id:'d',data:'2026-11-16',orador:'Visitante',tipo:'envio',destino:'Sul'}).esboco,null);
 assert.ok(!C.escalar(arrangements,'2026-11-15',0).disponiveis.some(o=>o.nome==='Local'));

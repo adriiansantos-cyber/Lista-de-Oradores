@@ -82,10 +82,10 @@
     const N = Number(st.config.intervalo) || 0, d = D.parse(row.data);
     const others = st.prog.filter(p => p.id !== row.id && p.data);
     const pick = fn => others.find(fn) || null;
-    const orador = norm(row.orador) ? pick(p => key(p.orador) === key(row.orador) && Math.abs(D.parse(p.data) - d) < N) : null;
-    const esboco = row.esboco ? pick(p => key(destinoDe(st, p)) === key(destinoDe(st, row)) && Number(p.esboco) === Number(row.esboco) && Math.abs(D.parse(p.data) - d) < N) : null;
+    const orador = row.tipo !== 'envio' && norm(row.orador) ? pick(p => p.tipo !== 'envio' && key(p.orador) === key(row.orador) && Math.abs(D.parse(p.data) - d) < N) : null;
+    const esboco = row.tipo !== 'envio' && row.esboco ? pick(p => p.tipo !== 'envio' && key(destinoDe(st, p)) === key(destinoDe(st, row)) && Number(p.esboco) === Number(row.esboco) && Math.abs(D.parse(p.data) - d) < N) : null;
     const conflito = norm(row.orador) ? pick(p => key(p.orador) === key(row.orador) && D.parse(p.data) === d) : null;
-    return { orador, esboco, conflito, any: !!(orador || esboco || conflito) };
+    return { orador, esboco, conflito, any: !!(orador || esboco) };
   }
   /* ---------- histórico: último (<= ref) e próximo (> ref) ---------- */
   function lastNext(list, ref) {
@@ -144,7 +144,7 @@
   function faltas(p) {
     const f = [];
     if (!norm(p.orador)) f.push('orador');
-    if (norm(p.confirmado).toUpperCase() !== 'SIM') f.push('confirmação');
+    if (p.tipo !== 'envio' && norm(p.confirmado).toUpperCase() !== 'SIM') f.push('confirmação');
     if (p.cantico === '' || p.cantico == null) f.push('cântico');
     if (!norm(p.imagens)) f.push('imagens');
     return f;
@@ -168,10 +168,10 @@
     return out;
   }
   /* ---------- Compartilhar ---------- */
-  function compartilhar(st, iniISO, fimISO) {
+  function compartilhar(st, iniISO, fimISO, modalidade = 'todos', orador = '') {
     const ini = D.parse(iniISO), fim = D.parse(fimISO);
-    const R = rows(st).filter(r => r.d >= ini && r.d <= fim).sort((a, b) => a.d - b.d);
-    const head = '*Programação de discursos (' + D.br(ini) + ' a ' + D.br(fim) + ')*';
+    const R = rows(st).filter(r => r.d >= ini && r.d <= fim && (modalidade === 'todos' || r.tipo === modalidade) && (!orador || key(r.orador) === key(orador))).sort((a, b) => a.d - b.d);
+    const head = '*' + (modalidade === 'envio' ? 'Envios para outras congregações' : modalidade === 'local' ? 'Discursos na congregação local' : 'Programação de discursos') + (orador ? ' — ' + norm(orador) : '') + ' (' + D.brFull(ini) + ' a ' + D.brFull(fim) + ')*';
     if (!R.length) return head + '\nNenhum discurso no período';
     const lines = R.map(r => {
       const orad = norm(r.orador) ? norm(r.orador) + (r.cong ? ' (' + r.cong + ')' : '') : 'orador a definir';
@@ -186,9 +186,9 @@
     let pos = 0; items.forEach((it, i) => { if (i === 0 || it.count !== items[i - 1].count) pos = i + 1; it.pos = pos; });
     return items;
   }
-  function relatorios(st, iniISO, fimISO) {
+  function relatorios(st, iniISO, fimISO, modalidade = 'todos') {
     const lo = iniISO ? D.parse(iniISO) : -1e9, hi = fimISO ? D.parse(fimISO) : 1e9;
-    const R = rows(st).filter(r => r.d >= lo && r.d <= hi);
+    const R = rows(st).filter(r => r.d >= lo && r.d <= hi && (modalidade === 'todos' || r.tipo === modalidade));
     const oradores = ranking(st.oradores.map(o => ({ nome: o.nome, cong: o.cong, count: R.filter(r => key(r.orador) === key(o.nome)).length })));
     const congs = ranking(allCongs(st).map(c => ({ nome: c, count: R.filter(r => participa(r, c)).length })));
     const esbocos = ranking(st.esbocos.map(e => ({ n: e.n, tema: norm(e.tema), count: R.filter(r => Number(r.esboco) === e.n).length })));
@@ -207,8 +207,8 @@
   }
 
   /* ---------- Histórico por orador, congregação ou esboço ---------- */
-  function historico(st, tipo, id, today) {
-    const R = rows(st).sort((a, b) => a.d - b.d);
+  function historico(st, tipo, id, today, modalidade = 'todos') {
+    const R = rows(st).filter(r => modalidade === 'todos' || r.tipo === modalidade).sort((a, b) => a.d - b.d);
     const L = tipo === 'o' ? R.filter(r => key(r.orador) === key(id)) : tipo === 'c' ? R.filter(r => participa(r, id)) : R.filter(r => Number(r.esboco) === Number(id));
     const dec = r => ({ id: r.id, d: r.d, data: r.data, orador: r.orador, cong: r.cong, tipo: r.tipo, origem: r.origem, destino: r.destino, esboco: r.esboco, tema: r.esboco ? temaDe(st, r.esboco) : '', confirmado: r.confirmado, pedido: r.pedido || '' });
     const past = L.filter(r => r.d < today).map(dec).reverse(), future = L.filter(r => r.d >= today).map(dec);
@@ -219,10 +219,31 @@
   function horaDe(st, p) { return norm(p.hora) || norm((st.horarios || {})[key(destinoDe(st, p))]) || norm(st.config.horaPadrao); }
   function mensagemConfirmacao(st, p) {
     if (!norm(p.orador) || !p.data) return null;
+    if (p.tipo === 'envio') return informeEnvio(st, p);
     const hora = horaDe(st, p), modelo = norm(st.config.modelo) ? st.config.modelo : MODELO_PADRAO;
     let t = modelo; if (!hora) t = t.split('\n').filter(l => !l.includes('{hora}')).join('\n');
     const map = { nome: norm(p.orador), tema: (p.esboco ? temaDe(st, p.esboco) : '') || '(tema a definir)', congregacao: destinoDe(st, p) || '(congregação local a definir)', data: D.brFull(D.parse(p.data)), hora };
     return t.replace(/\{(\w+)\}/g, (m, k) => k in map ? map[k] : m);
+  }
+  function informeEnvio(st, p) {
+    if (!norm(p.orador) || !Number.isFinite(D.parse(p.data))) return null;
+    return 'Olá, ' + norm(p.orador) + '!\n\nSegue sua programação de discurso:\nCongregação: ' + (destinoDe(st, p) || '(a definir)') + '\nData: ' + D.brFull(D.parse(p.data)) + '\nHorário: ' + (horaDe(st, p) || '(a definir)') + '\nEsboço: ' + (p.esboco ? 'Nº ' + p.esboco : '(a definir)') + '\nTema: ' + (temaDe(st, p.esboco) || '(a definir)') + '\n\nObrigado pela sua disposição!';
+  }
+  function vcardPhones(text) {
+    const lines = String(text).replace(/\r?\n[ \t]/g, '').split(/\r?\n/);
+    const result = []; let inCard = false, name = '', phones = [];
+    const flush = () => phones.forEach(phone => result.push({ nome: name, fone: phone }));
+    for (const line of lines) {
+      if (/^BEGIN:VCARD$/i.test(line.trim())) { inCard = true; name = ''; phones = []; continue; }
+      if (/^END:VCARD$/i.test(line.trim())) { if (inCard) flush(); inCard = false; continue; }
+      if (!inCard) continue;
+      const colon = line.indexOf(':'); if (colon < 0) continue;
+      const field = line.slice(0, colon).split(';')[0].split('.').pop().toUpperCase();
+      const value = line.slice(colon + 1).replace(/\\n/gi, ' ').replace(/\\([,;\\])/g, '$1').trim();
+      if (field === 'FN') name = value;
+      if (field === 'TEL') { const phone = value.replace(/^tel:/i, '').split(';')[0]; if (/\d/.test(phone) && !phones.includes(phone)) phones.push(phone); }
+    }
+    return result;
   }
   function foneWa(f) {
     const d = String(f == null ? '' : f).replace(/\D/g, ''); if (!d) return '';
@@ -230,7 +251,7 @@
     return d.length === 10 || d.length === 11 ? '55' + d : d;
   }
   function confirmacoes(st, today, dias) {
-    return rows(st).filter(r => r.d >= today && r.d <= today + Number(dias) && norm(r.orador) && norm(r.confirmado).toUpperCase() !== 'SIM').sort((a, b) => a.d - b.d)
+    return localRows(st).filter(r => r.d >= today && r.d <= today + Number(dias) && norm(r.orador) && norm(r.confirmado).toUpperCase() !== 'SIM').sort((a, b) => a.d - b.d)
       .map(r => ({ ...r, status: r.pedido ? 'aguardando' : 'novo', diasPedido: r.pedido ? today - D.parse(r.pedido) : null, fone: ((st.oradores.find(o => key(o.nome) === key(r.orador)) || {}).fone) || '' }));
   }
   /* ---------- Importação / exportação (SheetJS) ---------- */
@@ -306,5 +327,5 @@
     XLSX.utils.book_append_sheet(wb, XLSX.utils.aoa_to_sheet([['CONGREGAÇÃO LOCAL', st.config.local || '']]), 'CONFIGURAÇÕES');
     return XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellDates: true });
   }
-  root.Core = { origemDe, destinoDe, localRows, participa, arranjos, restoreState, MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
+  root.Core = { informeEnvio, vcardPhones, origemDe, destinoDe, localRows, participa, arranjos, restoreState, MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
 })(typeof window !== 'undefined' ? window : globalThis);

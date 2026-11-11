@@ -56,3 +56,7 @@ textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:
 .hero small{opacity:.8}.hero b{display:block;font-size:20px;margin:2px 0}
 .hero .btn{background:#fff;color:var(--pd);border-color:#fff}
 @media (prefers-reduced-motion:no-preference){.sheet{animation:up .18s ease-out}@keyframes up{from{transform:translateY(30px);opacity:.4}}}
+
+.home-actions{margin:10px 0 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
+.hero.outgoing{background:linear-gradient(135deg,#245846,#36765c)}
+.hero .btn{margin-top:10px}
