@@ -1,7 +1,7 @@
 const V = 'oradores-76e3e54ed22c95e6';
 const PREFIX = 'lista-oradores:' + self.registration.scope + ':';
 const CACHE = PREFIX + V;
-const FILES = ['./','index.html','manifest.json','xlsx.full.min.js','icon-192.png','icon-512.png','icon-maskable-512.png'];
+const FILES = ['./','index.html','manifest.json','xlsx.full.min.js','icone_app_192.png','icone_app_512.png','icone_app_512_maskable.png'];
 self.addEventListener('install', event => {
   event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
 });
