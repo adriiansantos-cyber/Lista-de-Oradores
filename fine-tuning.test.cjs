@@ -78,6 +78,28 @@ A.saveProg();
 assert.equal(browser.__app.st.prog.at(-1).confirmado,'');
 assert.equal(browser.__app.st.prog.at(-1).pedido,'');
 assert.ok(nodes.get('#overlay').innerHTML.includes('Informe da programação'));
+// Visual structure, independent palettes and congregation shortcuts.
+browser.__app.go('inicio');
+let home = nodes.get('#view').innerHTML;
+assert.equal((home.match(/class="hero next-card"/g)||[]).length,2);
+assert.ok(!home.includes('Gerar informe'));
+assert.ok(home.includes('Olá!'));
+assert.ok(home.includes('theme-azul') && home.includes('theme-verde'));
+assert.equal((home.match(/Confirmações locais/g)||[]).length,1);
+CH.palette({dataset:{kind:'envio'},value:'floresta'});
+browser.__app.go('inicio');
+assert.ok(nodes.get('#view').innerHTML.includes('theme-floresta'));
+assert.ok(nodes.get('#view').innerHTML.includes('theme-azul'));
+assert.equal(C.restoreState(browser.__app.st).config.envioPalette,'floresta');
+CH.palette({dataset:{kind:'envio'},value:'invalid'});
+assert.equal(browser.__app.st.config.envioPalette,'floresta');
+A.hist({dataset:{t:'c',v:'Central'}});
+assert.ok(nodes.get('#view').innerHTML.includes('Oradores vinculados (2)'));
+assert.ok(nodes.get('#view').innerHTML.includes('Cadastrar orador nesta congregação'));
+A.newOradCong({dataset:{v:'Norte'}});
+assert.ok(nodes.get('#overlay').innerHTML.includes('value="Norte" selected'));
+assert.ok(!nodes.get('#overlay').innerHTML.includes('Escolher telefone da agenda'));
+console.log('OK: cards padronizados, boas-vindas, paletas persistidas e cadastro por congregação.');
 (async()=>{
  browser.__test.openOrad(0);
  const savedPhone=browser.__app.st.oradores[0].fone;

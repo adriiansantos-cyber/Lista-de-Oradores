@@ -105,24 +105,8 @@ for(const [id,value] of Object.entries({f_data:'2026-12-06',f_orad:'Local',f_tip
 browser.__test.A.saveProg();
 assert.equal(browser.__app.st.prog.length,before+1); // mesmo dia, outra congregação
 browser.isSecureContext=true;
-(async()=>{
- browser.navigator.contacts={select:async(props,opts)=>{assert.equal(props[0],'tel');assert.equal(opts.multiple,false);return [{tel:['+55 85 99999-0000']}];}};
- browser.__test.openOrad(0);
- assert.ok(nodes.get('#overlay').innerHTML.includes('Escolher telefone da agenda'));
- const phoneBefore=browser.__app.st.oradores[0].fone;
- await browser.__test.A.pickContact();
- assert.equal(nodes.get('#o_fone').value,'+55 85 99999-0000');
- assert.equal(browser.__app.st.oradores[0].fone,phoneBefore);
- browser.navigator.contacts.select=async()=>[{tel:['111','222','111']}];
- await browser.__test.A.pickContact();
- assert.ok(nodes.get('#contactNumbers').innerHTML.includes('222'));
- browser.__test.CH.contactNumber({value:'222'});
- assert.equal(nodes.get('#o_fone').value,'222');
- browser.navigator.contacts.select=async()=>{const e=new Error();e.name='AbortError';throw e;};
- await browser.__test.A.pickContact();
- assert.equal(nodes.get('#o_fone').value,'222');
- browser.navigator.contacts=undefined;
- browser.__test.openOrad(0);
- assert.ok(nodes.get('#overlay').innerHTML.includes('Digite ou cole'));
- console.log('OK: agendar envio, bloquear conflito, agenda com um/vários telefones, cancelar e fallback.');
-})().catch(e=>{console.error(e);process.exitCode=1;});
+browser.navigator.contacts={select:async()=>{throw new Error('A agenda não deve ser chamada');}};
+browser.__test.openOrad(0);
+assert.ok(!nodes.get('#overlay').innerHTML.includes('Escolher telefone da agenda'));
+assert.ok(nodes.get('#overlay').innerHTML.includes('Digite ou cole'));
+console.log('OK: seleção de contatos suspensa.');

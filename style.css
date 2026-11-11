@@ -60,3 +60,23 @@ textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:
 .home-actions{margin:10px 0 16px;display:grid;grid-template-columns:repeat(auto-fit,minmax(135px,1fr))}
 .hero.outgoing{background:linear-gradient(135deg,#245846,#36765c)}
 .hero .btn{margin-top:10px}
+
+.theme-azul{--section:#1B5E7B;--section-dark:#123A4D}
+.theme-indigo{--section:#394B85;--section-dark:#28365E}
+.theme-petroleo{--section:#246775;--section-dark:#174651}
+.theme-verde{--section:#36765c;--section-dark:#245846}
+.theme-floresta{--section:#286044;--section-dark:#193F2D}
+.theme-oliva{--section:#566729;--section-dark:#39461B}
+.welcome{padding:8px 3px 18px}.welcome>span{font-size:15px;font-weight:600;color:var(--mut)}
+.welcome h2{font-size:19px;line-height:1.35;margin:5px 0 7px;color:var(--pd)}.welcome p{margin:0;color:var(--mut);font-size:13px}
+.home-section{padding:0 0 8px}.home-section+.home-section{border-top:1px solid var(--line);padding-top:20px;margin-top:4px}
+.home-section .sec{color:var(--section);margin-top:6px}
+.home-section .hero{background:linear-gradient(135deg,var(--section-dark),var(--section))}
+.next-card{min-height:150px;display:flex;flex-direction:column;justify-content:center;gap:4px;padding:18px}
+.next-card b{margin:2px 0;font-size:21px}.next-card .next-topic{font-size:13px;opacity:.9;overflow-wrap:anywhere}
+.home-section .btn{color:var(--section);border-color:var(--section)}.home-section .btn.primary{background:var(--section);color:#fff}
+.home-section .kpi b{color:var(--section-dark)}
+.home-actions{grid-template-columns:repeat(2,minmax(0,1fr));gap:8px}.home-actions .btn{font-size:14px;padding:10px 8px}
+.palette-preview{margin-top:8px;border-radius:8px;padding:12px;color:#fff;background:linear-gradient(135deg,var(--section-dark),var(--section));font-size:13px}
+.cong-speakers{margin:14px 0;padding:14px 0;border-top:1px solid var(--line)}.cong-speakers h3{font-size:15px;margin:0 0 10px}
+.speaker-link{display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:11px;margin-bottom:8px;color:var(--txt);font:inherit;cursor:pointer}.speaker-link small{color:var(--mut)}

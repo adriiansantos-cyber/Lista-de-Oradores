@@ -57,3 +57,13 @@ Referências: [Chrome](https://developer.chrome.com/docs/capabilities/web-apis/c
 Execute `node build.js`, `node review.test.cjs` e `node fine-tuning.test.cjs`. Os testes cobrem regras de arranjos, histórico, datas livres locais, conflitos, horários, migração, ida e volta pelo Excel e fluxos de cadastro/agenda com DOM e API simulados. Os testes adicionais cobrem painel inicial, ausência de repetição e confirmação para envios, informes, filtros de compartilhamento/ranking/histórico e importação VCF. As telas e APIs são testadas com DOM simulado; o APK e o seletor nativo ainda precisam de validação em um celular compatível, após publicar por HTTPS.
 
 Os arquivos foram preparados localmente. Para disponibilizar a atualização, publique os arquivos regenerados no GitHub Pages, incluindo `index.html`, `sw.js`, `manifest.json`, biblioteca XLSX e ícones.
+
+## Atualização visual e suspensão de contatos
+
+A seleção de contatos e a importação VCF foram retiradas da interface por enquanto; o telefone é preenchido manualmente. As rotinas auxiliares de VCF permanecem disponíveis no código, sem controles na tela.
+
+O início apresenta boas-vindas com a quantidade de agendamentos de hoje, cards locais e de envio com a mesma estrutura, divisória entre as seções e Confirmações locais no grupo de ações locais. O botão de informe foi retirado do card de próximo envio; os informes continuam no fluxo de salvar um envio.
+
+Configurações oferece seis paletas predefinidas para cada seção, aplicadas ao card, indicadores e botões daquela seção. Os padrões continuam azul e verde; as escolhas são salvas no aparelho e no backup JSON.
+
+O histórico e a edição da congregação mostram seus oradores vinculados. O botão Cadastrar orador nesta congregação abre o cadastro com a congregação selecionada. Para uma congregação nova, salve primeiro e depois use o atalho. No editor, salve alterações de nome/horário antes de abrir o cadastro do orador.
