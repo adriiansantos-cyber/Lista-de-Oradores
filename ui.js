@@ -69,7 +69,7 @@ V.inicio = () => {
   if (proximosEnvios.length) h += '<div class="sec">Próximos envios</div>' + proximosEnvios.slice(0,3).map(itemProg).join('');
   h += '</section>';
   const cf = C.confirmacoes(st, t, st.config.diasPendencias || 30);
-  h += '<div class="card"><h3>Acompanhamento</h3><div class="sub">' + cf.length + ' discursos locais sem confirmação · ' + k.pendencias + ' programações com pendências</div><div class="row home-actions"><button class="btn" data-go="pend">Pendências</button><button class="btn" data-go="relatorios">Rankings por modalidade</button></div></div>';
+  h += '<div class="card"><h3>Acompanhamento</h3><div class="sub">' + cf.length + ' discursos locais sem confirmação · ' + k.pendencias + ' programações com pendências</div><div class="row home-actions"><button class="btn" data-go="rodizio">Rodízio</button><button class="btn" data-go="livres">Datas livres</button></div></div>';
   return h;
 };
 V.prog = () => {
