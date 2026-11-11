@@ -9,7 +9,7 @@ const MESES = ['janeiro', 'fevereiro', 'março', 'abril', 'maio', 'junho', 'julh
 let st = load();
 const ui = { route: 'inicio', esc: { data: '', int: null, cong: '', draft: {}, no: 8, ne: 8 }, prog: { filtro: 'prox' }, pend: { dias: null }, livres: { ini: '', fim: '', dow: null }, comp: { ini: '', fim: '' }, rod: { aba: 'o', n: 30, q: '' }, rel: { ano: 'todos', aba: 'o', n: 30 }, cad: { aba: 'o', q: '' }, form: null, imp: null, hist: { tipo: 'o', id: '' }, hstack: [], hfrom: 'cadastros', msgs: { dias: 30 } };
 
-function load() { try { const s = JSON.parse(localStorage.getItem(LS)); if (s && s.v === 1) { s.config = Object.assign({ intervalo: 90, diaSemana: 0, diasPendencias: 30 }, s.config); s.congregacoes = s.congregacoes || []; s.horarios = s.horarios || {}; s.config = Object.assign({ horaPadrao: '17h', modelo: '' }, s.config); return s; } } catch (e) {} return C.emptyState(); }
+function load() { try { const raw = localStorage.getItem(LS); if (raw) return C.restoreState(JSON.parse(raw)); } catch (e) { setTimeout(() => toast('Não foi possível carregar os dados. Restaure um backup válido.'), 0); } return C.emptyState(); }
 function save() { try { localStorage.setItem(LS, JSON.stringify(st)); } catch (e) { toast('Não foi possível salvar no aparelho.'); } }
 const $ = s => document.querySelector(s);
 const esc = s => String(s == null ? '' : s).replace(/[&<>"']/g, c => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
@@ -216,7 +216,8 @@ function formChg() {
   box.className = m.length ? 'alertbox' : ''; box.innerHTML = m.map(x => '⚠ ' + esc(x)).join('<br>');
 }
 function saveProg(thenMsg) {
-  const f = readForm(); if (!f.data) return toast('Escolha a data.');
+  const f = readForm(); if (!Number.isFinite(D.parse(f.data))) return toast('Escolha uma data válida.');
+  if (f.esboco !== '' && (!Number.isInteger(f.esboco) || f.esboco <= 0)) return toast('Informe um número de esboço inteiro e positivo.');
   const cv = norm($('#f_cant').value), old = f.id ? st.prog.find(x => x.id === f.id) : null;
   const entry = { id: f.id || C.newId(), data: f.data, orador: norm(f.orador), esboco: f.esboco === '' ? null : f.esboco, cantico: cv === '' ? '' : (C.num(cv) != null ? C.num(cv) : cv), imagens: $('#f_img').value, confirmado: $('#f_conf').value, hora: norm($('#f_hora').value), pedido: old && key(old.orador) === key(f.orador) ? (old.pedido || '') : '' };
   const i = st.prog.findIndex(x => x.id === entry.id); if (i >= 0) st.prog[i] = entry; else st.prog.push(entry);
@@ -299,6 +300,7 @@ const A = {
   newCong: () => openCong(null), editCong: el => openCong(el.dataset.v),
   saveCong: () => {
     const nome = norm($('#c_nome').value), hora = norm($('#c_hora').value), old = ui.form.name; if (!nome) return toast('Digite o nome.');
+    if (C.allCongs(st).some(c => key(c) === key(nome) && key(c) !== key(old))) return toast('Essa congregação já existe.');
     if (old == null) { if (C.allCongs(st).some(c => key(c) === key(nome))) return toast('Essa congregação já existe.'); st.congregacoes.push(nome); }
     else { st.oradores.forEach(o => { if (key(o.cong) === key(old)) o.cong = nome; }); st.congregacoes = st.congregacoes.map(c => key(c) === key(old) ? nome : c); delete st.horarios[key(old)]; }
     if (hora) st.horarios[key(nome)] = hora; else delete st.horarios[key(nome)];
@@ -307,7 +309,7 @@ const A = {
   delCong: () => { const old = ui.form.name; if (st.oradores.some(o => key(o.cong) === key(old))) return toast('Há oradores nessa congregação. Mude-os antes.'); if (confirm('Excluir ' + old + '?')) { st.congregacoes = st.congregacoes.filter(c => key(c) !== key(old)); delete st.horarios[key(old)]; save(); closeSheet(); render(); } },
   newEsb: () => openEsb(null), editEsb: el => openEsb(Number(el.dataset.v)),
   saveEsb: () => {
-    const n = C.num($('#e_n').value), tema = norm($('#e_tema').value), old = ui.form.n; if (n == null || !tema) return toast('Informe o número e o tema.');
+    const n = C.num($('#e_n').value), tema = norm($('#e_tema').value), old = ui.form.n; if (!Number.isInteger(n) || n <= 0 || !tema) return toast('Informe o número e o tema.');
     if (st.esbocos.some(e => e.n === n && e.n !== old)) return toast('Esse número já existe.');
     if (old == null) st.esbocos.push({ n, tema }); else { const e = st.esbocos.find(x => x.n === old); if (n !== old) st.prog.forEach(p => { if (Number(p.esboco) === old) p.esboco = n; }); e.n = n; e.tema = tema; }
     st.esbocos.sort((a, b) => a.n - b.n); save(); closeSheet(); render(); toast('Esboço salvo.');
@@ -331,7 +333,7 @@ const CH = {
   formChg,
   cfgInt: el => { st.config.intervalo = Math.max(0, Number(el.value) || 0); save(); ui.esc.int = null; toast('Salvo.'); }, cfgDow: el => { st.config.diaSemana = Number(el.value); save(); toast('Salvo.'); }, cfgPend: el => { st.config.diasPendencias = Math.max(1, Number(el.value) || 30); save(); toast('Salvo.'); },
   impFile: async el => { const f = el.files[0]; if (!f) return; try { await ensureXLSX(); const res = C.importWorkbook(XLSX, await f.arrayBuffer()); ui.imp = res; const nada = !res.prog.length && !res.oradores.length && !res.esbocos.length; sheet('<h2>Importar planilha</h2><div class="card"><div class="sub">Encontrei:</div><b>' + res.prog.length + '</b> discursos · <b>' + res.oradores.length + '</b> oradores · <b>' + res.esbocos.length + '</b> esboços<br><span class="sub">' + res.abas.map(esc).join('<br>') + '</span>' + (res.avisos.length ? '<div class="alertbox" style="margin-top:8px">' + res.avisos.map(esc).join('<br>') + '</div>' : '') + '</div>' + (nada ? '' : '<button class="btn primary block" data-act="mesclar">Mesclar com meus dados</button><button class="btn block" data-act="substituir">Substituir meus dados</button>') + '<button class="btn block" data-act="closeSheet">Cancelar</button>'); } catch (e) { toast('Não consegui ler o arquivo: ' + e.message); } el.value = ''; },
-  impJson: async el => { const f = el.files[0]; if (!f) return; try { const s = JSON.parse(await f.text()); if (!s || s.v !== 1 || !Array.isArray(s.prog)) throw new Error('arquivo inválido'); if (confirm('Restaurar o backup e substituir os dados atuais?')) { st = s; st.config = Object.assign({ intervalo: 90, diaSemana: 0, diasPendencias: 30, horaPadrao: '17h', modelo: '' }, st.config); st.congregacoes = st.congregacoes || []; st.horarios = st.horarios || {}; save(); go('inicio'); toast('Backup restaurado.'); } } catch (e) { toast('Backup inválido: ' + e.message); } el.value = ''; }
+  impJson: async el => { const f = el.files[0]; if (!f) return; try { const restored = C.restoreState(JSON.parse(await f.text())); if (confirm('Restaurar o backup e substituir os dados atuais?')) { st = restored; save(); go('inicio'); toast('Backup restaurado.'); } } catch (e) { toast('Backup inválido: ' + e.message); } el.value = ''; }
 };
 const INP = { formChg, rodQ: el => { ui.rod.q = el.value; ui.rod.n = 30; render(); const i = $('input[data-inp="rodQ"]'); if (i) { i.focus(); i.setSelectionRange(99, 99); } }, cadQ: el => { ui.cad.q = el.value; render(); const i = $('input[data-inp="cadQ"]'); if (i) { i.focus(); i.setSelectionRange(99, 99); } } };
 document.addEventListener('click', e => {

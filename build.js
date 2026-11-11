@@ -1,8 +1,10 @@
-const fs=require('fs'),path=require('path');
-const r=f=>fs.readFileSync(path.join(__dirname,f),'utf8');
-let html=r('src/template.html').replace('/*CSS*/',()=>r('src/style.css')).replace('/*CORE*/',()=>r('src/core.js')).replace('/*UI*/',()=>r('src/ui.js'));
-fs.mkdirSync('dist/icons',{recursive:true});
-fs.writeFileSync('dist/index.html',html);
-fs.copyFileSync('node_modules/xlsx/dist/xlsx.full.min.js','dist/xlsx.full.min.js');
-const sw=fs.readFileSync('dist/sw.js','utf8').replace(/const V='oradores-v\d+'/,"const V='oradores-v2'"); fs.writeFileSync('dist/sw.js',sw);
-console.log('dist ok',(html.length/1024).toFixed(0)+' KB');
+// Execute com node build.js a partir de qualquer pasta.
+const fs = require('node:fs'), path = require('node:path'), crypto = require('node:crypto');
+const read = name => fs.readFileSync(path.join(__dirname, name), 'utf8');
+const html = read('template.html').replace('/*CSS*/', () => read('style.css')).replace('/*CORE*/', () => read('core.js')).replace('/*UI*/', () => read('ui.js'));
+fs.writeFileSync(path.join(__dirname, 'index.html'), html);
+const hash = crypto.createHash('sha256');
+['index.html','manifest.json','xlsx.full.min.js','icon-192.png','icon-512.png','icon-maskable-512.png'].forEach(name => hash.update(fs.readFileSync(path.join(__dirname, name))));
+const version = 'oradores-' + hash.digest('hex').slice(0,16);
+fs.writeFileSync(path.join(__dirname, 'sw.js'), read('sw.js').replace(/const V = '[^']+';/, `const V = '${version}';`));
+console.log('App gerado:', version);

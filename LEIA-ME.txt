@@ -1,0 +1,73 @@
+LISTA DE ORADORES - APLICATIVO PARA ANDROID (PWA)
+=================================================
+
+O QUE É
+Um aplicativo que se instala no celular direto pelo navegador (Chrome), sem loja,
+e funciona sem internet. Os dados ficam salvos no próprio aparelho.
+
+CONTEÚDO DESTA PASTA
+  index.html              o aplicativo
+  manifest.json    dados de instalação (nome, ícone, cores)
+  sw.js                   permite usar sem internet
+  xlsx.full.min.js        leitura e gravação de planilhas .xlsx
+  icon-*.png              ícones do aplicativo
+
+PASSO 1 - COLOCAR O APLICATIVO NA INTERNET (uma vez só)
+O Android só instala o aplicativo a partir de um endereço seguro (https). O jeito mais
+simples e gratuito:
+
+  Opção A - Netlify (mais fácil)
+  1. Descompacte o .zip no computador.
+  2. Entre em https://app.netlify.com/drop e crie uma conta gratuita, se pedir.
+  3. Arraste a PASTA descompactada para a página. Em instantes ela mostra um endereço
+     do tipo https://nome-aleatorio.netlify.app
+  4. Em "Site configuration", você pode trocar o nome do endereço.
+
+  Opção B - GitHub Pages
+  1. Crie um repositório público no GitHub e envie estes arquivos para ele.
+  2. Em Settings > Pages, escolha a branch principal e salve. O endereço aparece ali.
+
+PASSO 2 - INSTALAR NO CELULAR
+  1. Abra o endereço no Chrome do Android.
+  2. Menu (três pontinhos) > "Instalar app" (ou "Adicionar à tela inicial").
+  3. Pronto: o ícone "Oradores" aparece na tela inicial e abre como um aplicativo.
+  Cada pessoa que for usar repete o passo 2 com o mesmo endereço.
+
+PASSO 3 - TRAZER OS DADOS DA PLANILHA
+  1. No aplicativo: Mais > Dados e planilha > Importar planilha.
+  2. Escolha o arquivo .xlsx da Lista de Oradores (abas 2026, 2027, CADASTROS, ESBOÇOS).
+  3. Escolha "Substituir meus dados" (primeira vez) ou "Mesclar com meus dados".
+  Para levar o arquivo ao celular, envie-o pelo WhatsApp, e-mail ou OneDrive.
+
+USO EM VÁRIOS CELULARES
+Cada celular tem os seus próprios dados. Para passar a programação de um para outro:
+  Mais > Dados e planilha > "Enviar planilha para outro celular" (gera um .xlsx), e no
+  outro celular use "Importar planilha" > "Mesclar com meus dados".
+Faça também um backup de vez em quando: "Salvar backup".
+
+COMO GERAR UM ARQUIVO .APK (OPCIONAL)
+Não é necessário para usar. Se quiser um .apk para instalar manualmente:
+  1. Entre em https://www.pwabuilder.com e informe o endereço do aplicativo.
+  2. Escolha "Package for stores" > Android e baixe o pacote.
+  3. No celular, permita "instalar apps de fontes desconhecidas" e abra o .apk.
+
+ATUALIZAR O APLICATIVO
+Ao receber uma versão nova desta pasta, arraste-a de novo para o mesmo site no Netlify.
+Quem usa recebe a atualização ao abrir o aplicativo com internet.
+
+OBSERVAÇÕES
+- As regras são as da planilha: alerta de repetição (intervalo mínimo em Configurações),
+  Escalar, Rodízio, Pendências, Datas livres, Compartilhar e Relatórios.
+- A congregação de cada discurso segue a congregação atual do orador no Cadastro.
+- O aplicativo não altera o seu arquivo do Excel: ele importa e exporta cópias.
+
+MANUTENÇÃO DO CÓDIGO
+- Edite core.js (regras), ui.js (interface), style.css e template.html.
+- Execute: node build.js
+- O comando regenera index.html e a versão do cache em sw.js.
+- Não edite index.html manualmente nem carregue build.js no navegador.
+- Execute os testes: node review.test.cjs
+- Para publicar, envie os arquivos atualizados ao repositório do GitHub Pages.
+- Mantenha index.html, sw.js, manifest.json, xlsx.full.min.js e os três ícones
+  juntos na pasta publicada. O site precisa de HTTPS para instalar e usar offline.
+- Após atualizar, reabra o aplicativo para carregar a nova versão.

@@ -2,7 +2,7 @@
   "name": "Lista de Oradores",
   "short_name": "Oradores",
   "description": "Programação de discursos, rodízio e pendências",
-  "id": "/",
+  "id": "./",
   "start_url": "./",
   "scope": "./",
   "display": "standalone",

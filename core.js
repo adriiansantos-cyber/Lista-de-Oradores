@@ -2,7 +2,12 @@
 (function (root) {
   const p2 = n => String(n).padStart(2, '0');
   const D = {
-    parse(s) { const [y, m, d] = String(s).slice(0, 10).split('-').map(Number); return Date.UTC(y, m - 1, d) / 86400000; },
+    parse(s) {
+      if (!/^\d{4}-\d{2}-\d{2}$/.test(String(s))) return NaN;
+      const [y, m, d] = s.split('-').map(Number), t = new Date(0);
+      t.setUTCFullYear(y, m - 1, d);
+      return t.getUTCFullYear() === y && t.getUTCMonth() === m - 1 && t.getUTCDate() === d ? t.getTime() / 86400000 : NaN;
+    },
     iso(n) { const t = new Date(n * 86400000); return t.getUTCFullYear() + '-' + p2(t.getUTCMonth() + 1) + '-' + p2(t.getUTCDate()); },
     today() { const t = new Date(); return Date.UTC(t.getFullYear(), t.getMonth(), t.getDate()) / 86400000; },
     dow(n) { return new Date(n * 86400000).getUTCDay(); },
@@ -20,6 +25,25 @@
 
   function emptyState() {
     return { v: 1, config: { intervalo: 90, diaSemana: 0, diasPendencias: 30, horaPadrao: '17h', modelo: '' }, oradores: [], congregacoes: [], horarios: {}, esbocos: [], prog: [] };
+  }
+  function restoreState(s) {
+    if (!s || s.v !== 1 || !['prog', 'oradores', 'esbocos'].every(k => Array.isArray(s[k]))) throw new Error('estrutura de backup inválida');
+    const validString = value => typeof value === 'string';
+    if (!s.oradores.every(o => o && validString(o.nome) && norm(o.nome) && validString(o.cong)) ||
+        !s.esbocos.every(e => e && Number.isInteger(e.n) && e.n > 0 && validString(e.tema)) ||
+        !s.prog.every(p => p && validString(p.orador) && Number.isFinite(D.parse(p.data)) && (p.esboco == null || p.esboco === '' || (Number.isInteger(p.esboco) && p.esboco > 0)))) throw new Error('registros inválidos no backup');
+    const out = JSON.parse(JSON.stringify(s)), defaults = emptyState();
+    out.config = Object.assign(defaults.config, out.config);
+    for (const k of ['intervalo', 'diasPendencias', 'diaSemana']) {
+      if (!Number.isInteger(out.config[k]) || out.config[k] < (k === 'diasPendencias' ? 1 : 0) || (k === 'diaSemana' && out.config[k] > 6)) throw new Error('configurações inválidas');
+    }
+    out.congregacoes = out.congregacoes || [];
+    if (!Array.isArray(out.congregacoes) || !out.congregacoes.every(validString)) throw new Error('congregações inválidas');
+    out.horarios = out.horarios || {};
+    if (typeof out.horarios !== 'object' || Array.isArray(out.horarios)) throw new Error('horários inválidos');
+    const ids = new Set();
+    out.prog.forEach(p => { if (typeof p.id !== 'string' || !p.id || ids.has(p.id)) p.id = newId(); ids.add(p.id); });
+    return out;
   }
   function congDe(st, nome) { const o = st.oradores.find(o => key(o.nome) === key(nome)); return o ? o.cong : ''; }
   function temaDe(st, n) { const e = st.esbocos.find(e => e.n === Number(n)); return e ? norm(e.tema) : ''; }
@@ -156,7 +180,7 @@
     const prox = futuros[0] || null;
     const ano = D.year(today);
     const pend = pendencias(st, today, st.config.diasPendencias || 30);
-    const livres = datasLivres(st, D.iso(today), D.iso(today + 56), st.config.diaSemana).length;
+    const livres = datasLivres(st, D.iso(today), D.iso(today + 55), st.config.diaSemana).length;
     const confirmados = R.filter(r => norm(r.confirmado).toUpperCase() === 'SIM').length;
     return { prox, discursosAno: R.filter(r => D.year(r.d) === ano).length, pendencias: pend.lista.length, livres8: livres, oradores: st.oradores.length, total: R.length, confirmados };
   }
@@ -193,7 +217,7 @@
   function toDay(v) {
     if (v instanceof Date) return Date.UTC(v.getFullYear(), v.getMonth(), v.getDate()) / 86400000;
     if (typeof v === 'number' && v > 20000 && v < 80000) return D.fromSerial(v);
-    if (typeof v === 'string') { const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); if (m) return Date.UTC(+m[3], +m[2] - 1, +m[1]) / 86400000; const m2 = v.trim().match(/^(\d{4})-(\d{2})-(\d{2})/); if (m2) return D.parse(v); }
+    if (typeof v === 'string') { const m = v.trim().match(/^(\d{1,2})\/(\d{1,2})\/(\d{4})$/); const d = D.parse(m ? m[3] + '-' + p2(m[2]) + '-' + p2(m[1]) : v.trim()); if (Number.isFinite(d)) return d; }
     return null;
   }
   function findHeader(rs, test) {
@@ -243,9 +267,9 @@
     for (const y of years) {
       const list = st.prog.filter(p => p.data && D.year(D.parse(p.data)) === y).sort((a, b) => a.data.localeCompare(b.data));
       const aoa = [['DATA', 'ORADOR', 'CONGREGAÇÃO', 'Nº', 'TEMA', 'CÂNTICO', 'IMAGENS', 'CONFIRMADO', 'HORÁRIO', 'PEDIDO']];
-      list.forEach(p => { const d = D.parse(p.data); aoa.push([new Date(Date.UTC(y, new Date(d * 86400000).getUTCMonth(), new Date(d * 86400000).getUTCDate())), p.orador, congDe(st, p.orador), p.esboco == null ? '' : p.esboco, p.esboco ? temaDe(st, p.esboco) : '', p.cantico === '' ? '' : p.cantico, p.imagens, p.confirmado, p.hora || '', p.pedido || '']); });
+      list.forEach(p => { const d = D.parse(p.data); aoa.push([d + 25569, p.orador, congDe(st, p.orador), p.esboco == null ? '' : p.esboco, p.esboco ? temaDe(st, p.esboco) : '', p.cantico === '' ? '' : p.cantico, p.imagens, p.confirmado, p.hora || '', p.pedido || '']); });
       const ws = XLSX.utils.aoa_to_sheet(aoa, { cellDates: true }); ws['!cols'] = [{ wch: 12 }, { wch: 24 }, { wch: 26 }, { wch: 6 }, { wch: 50 }, { wch: 9 }, { wch: 9 }, { wch: 12 }, { wch: 10 }, { wch: 12 }];
-      for (let r = 1; r < aoa.length; r++) { const c = ws['A' + (r + 1)]; if (c) { c.t = 'd'; c.z = 'dd/mm/yyyy'; } }
+      for (let r = 1; r < aoa.length; r++) { const c = ws['A' + (r + 1)]; if (c) { c.t = 'n'; c.z = 'dd/mm/yyyy'; } }
       XLSX.utils.book_append_sheet(wb, ws, String(y));
     }
     const cg = allCongs(st); const n = Math.max(st.oradores.length, cg.length);
@@ -255,5 +279,5 @@
     const we = XLSX.utils.aoa_to_sheet(es); we['!cols'] = [{ wch: 6 }, { wch: 70 }]; XLSX.utils.book_append_sheet(wb, we, 'ESBOÇOS');
     return XLSX.write(wb, { type: 'array', bookType: 'xlsx', cellDates: true });
   }
-  root.Core = { MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
+  root.Core = { restoreState, MODELO_PADRAO, historico, horaDe, mensagemConfirmacao, foneWa, confirmacoes, D, norm, key, num, newId, emptyState, congDe, temaDe, allCongs, rows, alerta, escalar, rodizio, faltas, pendencias, datasLivres, compartilhar, relatorios, indicadores, importWorkbook, exportWorkbook };
 })(typeof window !== 'undefined' ? window : globalThis);

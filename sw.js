@@ -1,52 +1,15 @@
-const V = 'oradores-v2';
-
-const FILES = [
-  './',
-  'index.html',
-  'manifest.json',
-  'build.js',
-  'core.js',
-  'style.css',
-  'ui.js',
-  'template.html',
-  'xlsx.full.min.js',
-  'icon-192.png',
-  'icon-512.png',
-  'icon-maskable-512.png'
-];
-
-self.addEventListener('install', e => {
-  e.waitUntil(
-    caches.open(V)
-      .then(c => c.addAll(FILES))
-      .then(() => self.skipWaiting())
-  );
+const V = 'oradores-76e3e54ed22c95e6';
+const PREFIX = 'lista-oradores:' + self.registration.scope + ':';
+const CACHE = PREFIX + V;
+const FILES = ['./','index.html','manifest.json','xlsx.full.min.js','icon-192.png','icon-512.png','icon-maskable-512.png'];
+self.addEventListener('install', event => {
+  event.waitUntil(caches.open(CACHE).then(cache => cache.addAll(FILES)).then(() => self.skipWaiting()));
 });
-
-self.addEventListener('activate', e => {
-  e.waitUntil(
-    caches.keys().then(keys =>
-      Promise.all(
-        keys.filter(key => key !== V).map(key => caches.delete(key))
-      )
-    ).then(() => self.clients.claim())
-  );
+self.addEventListener('activate', event => {
+  event.waitUntil(caches.keys().then(keys => Promise.all(keys.filter(key => key.startsWith(PREFIX) && key !== CACHE).map(key => caches.delete(key)))).then(() => self.clients.claim()));
 });
-
-self.addEventListener('fetch', e => {
-  if (e.request.method !== 'GET') return;
-
-  e.respondWith(
-    caches.match(e.request, { ignoreSearch: true }).then(cached => {
-      const network = fetch(e.request).then(response => {
-        if (response && response.status === 200) {
-          const clone = response.clone();
-          caches.open(V).then(cache => cache.put(e.request, clone));
-        }
-        return response;
-      }).catch(() => cached);
-
-      return cached || network;
-    })
-  );
+self.addEventListener('fetch', event => {
+  const assets = FILES.map(file => new URL(file, self.registration.scope).href);
+  if (event.request.method !== 'GET' || !assets.includes(event.request.url)) return;
+  event.respondWith(caches.open(CACHE).then(async cache => (await cache.match(event.request)) || fetch(event.request)));
 });
