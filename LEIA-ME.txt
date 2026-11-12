@@ -71,3 +71,27 @@ MANUTENÇÃO DO CÓDIGO
 - Mantenha index.html, sw.js, manifest.json, xlsx.full.min.js e os três ícones
   juntos na pasta publicada. O site precisa de HTTPS para instalar e usar offline.
 - Após atualizar, reabra o aplicativo para carregar a nova versão.
+
+ARRANJOS E FILTROS POR MODALIDADE
+- O início separa os discursos locais dos envios dos oradores locais.
+- Envios geram informes, sem pedidos de confirmação ou alertas de repetição.
+- Conflitos do mesmo orador no mesmo dia continuam bloqueados.
+- Compartilhar permite escolher modalidade, período e orador dos envios.
+- Rankings e históricos permitem separar discursos locais e envios.
+- No APK sem seleção de agenda, use Importar contato (.vcf).
+- Consulte ARRANJOS.md e APK-AGENDA.md para regras e alternativas nativas.
+- Verificação adicional: node fine-tuning.test.cjs
+
+PACOTE DE EXPERIÊNCIA DO APP
+- Pendências concentra o acompanhamento e os pedidos de confirmação.
+- Configurações: modo claro, noturno ou automático; tamanho de texto e contraste.
+- Mais > Histórico de informes: mensagens preparadas, copiadas ou abertas no WhatsApp.
+- Buscar no cabeçalho: pesquisa geral; Programação e Cadastros oferecem ordenação.
+- Rodízio: modalidade, período, busca e ordenação.
+- Novos agendamentos percorrem cinco etapas antes de salvar.
+- Compartilhar exige revisão antes de abrir o WhatsApp, copiar ou escolher outro app.
+- Exclusões individuais: botão Desfazer e Mais > Exclusões recentes (7 dias, até 50).
+- Calendário mensal continua opcional em Configurações; a lista é o padrão.
+- Testes: node review.test.cjs; node fine-tuning.test.cjs; node package.test.cjs
+- Teste de navegador (Chrome instalado): node --experimental-websocket browser.test.cjs
+- Consulte PACOTE-EXPERIENCIA.md para detalhes e limites de validação.

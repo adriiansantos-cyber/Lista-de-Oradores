@@ -67,3 +67,9 @@ O início apresenta boas-vindas com a quantidade de agendamentos de hoje, cards 
 Configurações oferece seis paletas predefinidas para cada seção, aplicadas ao card, indicadores e botões daquela seção. Os padrões continuam azul e verde; as escolhas são salvas no aparelho e no backup JSON.
 
 O histórico e a edição da congregação mostram seus oradores vinculados. O botão Cadastrar orador nesta congregação abre o cadastro com a congregação selecionada. Para uma congregação nova, salve primeiro e depois use o atalho. No editor, salve alterações de nome/horário antes de abrir o cadastro do orador.
+
+## Visualização opcional em calendário
+
+Em Configurações → Visualização da programação, escolha Lista (padrão) ou Calendário mensal. A preferência altera somente a tela Programação, sem duplicar ou converter registros, e fica salva no aparelho e no backup JSON. Backups antigos usam Lista.
+
+O calendário oferece mês anterior/próximo, Hoje, filtros por modalidade e orador, detalhes do dia e Agendar nesta data. L identifica discursos locais e E identifica envios. As datas livres consideram o dia de reunião configurado e todos os registros locais, independentemente dos filtros aplicados. Use os detalhes do dia para abrir e editar uma programação existente.

@@ -80,3 +80,35 @@ textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:
 .palette-preview{margin-top:8px;border-radius:8px;padding:12px;color:#fff;background:linear-gradient(135deg,var(--section-dark),var(--section));font-size:13px}
 .cong-speakers{margin:14px 0;padding:14px 0;border-top:1px solid var(--line)}.cong-speakers h3{font-size:15px;margin:0 0 10px}
 .speaker-link{display:flex;flex-direction:column;gap:3px;text-align:left;width:100%;border:1px solid var(--line);background:var(--card);border-radius:9px;padding:11px;margin-bottom:8px;color:var(--txt);font:inherit;cursor:pointer}.speaker-link small{color:var(--mut)}
+
+.calendar-toolbar{display:flex;align-items:center;gap:8px;margin-bottom:10px}.calendar-toolbar h2{flex:1;text-align:center;font-size:18px;text-transform:capitalize;margin:0}.calendar-toolbar .btn{min-width:44px;font-size:24px;padding:2px 10px}
+.calendar-grid{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:3px}
+.calendar-weekday{text-align:center;font-size:11px;color:var(--mut);padding:6px 0}
+.calendar-day{font:inherit;min-height:70px;padding:5px 1px;border:1px solid var(--line);border-radius:7px;background:var(--card);color:var(--txt);cursor:pointer;display:flex;flex-direction:column;align-items:center;gap:4px}
+.calendar-day.selected{outline:2px solid var(--p);outline-offset:-2px;background:var(--pl)}.calendar-day.today b{text-decoration:underline;text-underline-offset:3px}
+.calendar-counts{display:flex;flex-wrap:wrap;justify-content:center;gap:2px;font-size:10px;line-height:1.4}.calendar-local{color:#123A4D;background:#E3F1F7;border-radius:3px;padding:0 2px}.calendar-envio{color:#193F2D;background:#E3F4E8;border-radius:3px;padding:0 2px}.calendar-free{color:var(--mut);font-size:9px}
+.calendar-details h3{font-size:16px}.calendar-day:focus-visible{outline:3px solid var(--p);outline-offset:2px}
+
+/* Aparência, leitura e navegação por teclado */
+:root[data-theme="dark"]{color-scheme:dark;--bg:#111A21;--card:#1B2832;--txt:#EDF3F7;--mut:#B7C8D3;--line:#425360;--p:#87CDE9;--pd:#BCE7F7;--pl:#253E4C;--warn:#FFE1A0;--warnbg:#493B20;--ok:#A5E5BD;--okbg:#223F30;--bad:#FFB9B9;--badbg:#4A2B2E;--acc:#85CDE6}
+[data-theme="dark"] #top{background:#123A4D}[data-theme="dark"] #tabs,[data-theme="dark"] .sheet,[data-theme="dark"] input,[data-theme="dark"] select,[data-theme="dark"] textarea,[data-theme="dark"] .btn{background:var(--card);color:var(--txt)}
+[data-theme="dark"] .btn.primary{background:#1B5E7B;color:#fff;border-color:#87CDE9}[data-theme="dark"] .seg{background:#101B24}[data-theme="dark"] .seg button.on{background:#314958;color:#fff}
+[data-theme="dark"] .hero{background:linear-gradient(135deg,#123A4D,#1B5E7B)}[data-theme="dark"] .home-section .kpi b,[data-theme="dark"] .home-section .sec{color:var(--txt)}[data-theme="dark"] .home-section .btn{color:var(--txt);border-color:#829EAD}[data-theme="dark"] .home-section .btn.primary{background:var(--section);color:#fff}
+:root[data-contrast="high"]{--txt:#101820;--mut:#263D4C;--line:#657A88;--p:#104967}
+:root[data-theme="dark"][data-contrast="high"]{--txt:#fff;--mut:#E0EBF1;--line:#A7BDCB;--p:#BCEBFF}
+:root[data-text="grande"] body{font-size:17px}:root[data-text="maior"] body{font-size:19px}
+[data-text="grande"] .sub,[data-text="grande"] .item .m div,[data-text="grande"] .field label{font-size:15px}
+[data-text="maior"] .sub,[data-text="maior"] .item .m div,[data-text="maior"] .field label{font-size:17px}
+[data-text="maior"] .btn{font-size:18px}[data-text="maior"] .home-actions{grid-template-columns:1fr}
+:focus-visible{outline:3px solid var(--acc);outline-offset:3px}
+.btn.sm{min-height:44px}.seg button{min-height:44px}#searchButton{display:block!important;font-size:15px!important;min-width:44px;min-height:44px}
+.item,.card,.sheet{overflow-wrap:anywhere}.row>.field{min-width:130px}.sheet textarea{max-width:100%}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{animation:none!important;scroll-behavior:auto!important;transition:none!important}}
+
+[data-theme="dark"] .home-section .hero{background:linear-gradient(135deg,var(--section-dark),var(--section))}
+
+#tabs button{min-width:0;overflow-wrap:anywhere}
+[data-text="grande"] #tabs button{font-size:12px}[data-text="maior"] #tabs button{font-size:13px}
+#toast .btn{margin-left:6px;background:var(--card);color:var(--txt)}
+
+[data-text="grande"] .kpi span,[data-text="grande"] .chip{font-size:13px}[data-text="maior"] .kpi span,[data-text="maior"] .chip{font-size:15px}
