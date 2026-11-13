@@ -112,3 +112,19 @@ textarea{min-height:140px;font-family:ui-monospace,Consolas,monospace;font-size:
 #toast .btn{margin-left:6px;background:var(--card);color:var(--txt)}
 
 [data-text="grande"] .kpi span,[data-text="grande"] .chip{font-size:13px}[data-text="maior"] .kpi span,[data-text="maior"] .chip{font-size:15px}
+
+/* Pendências: informação acima, ações no rodapé. */
+.pend-filters{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:12px}
+.pend-filters .field{min-width:0;margin:0}.pend-filters select{max-width:100%}
+.pend-summary{margin:12px 0 16px;line-height:1.6}
+.pend-card{padding:16px;margin-bottom:12px}.pend-card p{margin:0}
+.pend-heading{display:flex;justify-content:space-between;align-items:baseline;flex-wrap:wrap;gap:4px 12px;margin-bottom:12px}
+.pend-heading>span:first-child{font-weight:600}.pend-card h3{margin-bottom:4px}
+.pend-status{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}.pend-status .chip{margin:0}
+.pend-card .pend-request{margin-top:10px}
+.pend-actions{display:flex;flex-wrap:wrap;align-items:stretch;gap:8px;border-top:1px solid var(--line);padding-top:12px;margin-top:14px}
+.pend-actions .btn{display:flex;align-items:center;justify-content:center;gap:7px;flex:1 1 auto;overflow-wrap:anywhere}
+.pend-actions .i{flex-shrink:0}.pend-actions .quiet{border-color:transparent;background:transparent;color:var(--mut);flex:0 1 auto}
+@media(max-width:380px){.pend-filters{grid-template-columns:1fr}.pend-actions .quiet{flex-basis:100%}}
+[data-text="maior"] .pend-filters{grid-template-columns:1fr}
+[data-text="maior"] .pend-heading,[data-text="maior"] .pend-actions{flex-direction:column;align-items:stretch}

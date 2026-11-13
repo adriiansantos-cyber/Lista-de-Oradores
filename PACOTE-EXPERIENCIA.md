@@ -1,5 +1,13 @@
 # Pacote de experiência do app
 
+## Padronização aprovada em 13/11/2026
+
+A tela inicial apresenta a mesma sequência nas seções locais e de envios: card de destaque, lista de até três próximos agendamentos (incluindo o destaque), indicadores e ações. As paletas configuradas continuam aplicadas a cada seção.
+
+Pendências reúne os filtros no topo e os indicadores em um resumo compacto. Cada card apresenta data, orador, destino e pendências; as ações ficam em um rodapé separado. **Solicitar** abre a revisão da mensagem; quando há pedido registrado, aparece **Solicitar novamente**. **Confirmar** continua registrando a confirmação local, mantendo as demais pendências. **Ver detalhes** abre a edição. Os controles se adaptam a telas estreitas, texto ampliado e modo noturno.
+
+A verificação no Chrome cobre as duas listas, a abertura da solicitação sem confirmar o discurso, a confirmação mantendo cântico e imagens pendentes e os controles a 320 pixels com texto muito grande. Capturas: `qa/pendencias-claro.png` e `qa/pendencias-escuro.png`.
+
 Implementações locais das nove prioridades aprovadas, com o calendário opcional.
 
 | Prioridade | Resultado |
