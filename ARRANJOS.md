@@ -36,6 +36,8 @@ Em **Compartilhar**, selecione a modalidade e o período. Para envios, escolha t
 
 Os rankings possuem filtro entre discurso local e envio. O histórico também permite filtrar por essas modalidades ou consultar todas; ao abrir pelo ranking, mantém a modalidade selecionada. Contagens de ranking incluem todos os registros lançados no período, inclusive futuros.
 
+No ranking de **Congregações**, a congregação local fica excluída. Na modalidade local, conta-se a congregação de origem de cada orador recebido; nos envios, a congregação de destino que recebeu o orador local. Um discurso de um orador local na própria congregação não soma para nenhuma parceira. A origem histórica registrada no agendamento é preservada, e os filtros de período continuam aplicados. Essa correção não altera o total geral de discursos nem os rankings de oradores e esboços.
+
 **Quem escalar** continua voltado à programação local: considera os compromissos externos no mesmo dia para disponibilidade e o uso local dos esboços. Para enviar oradores, use Arranjos.
 
 ## Compatibilidade dos dados

@@ -32,6 +32,23 @@ assert.equal(C.relatorios(st,null,null,'local').total,2);
 assert.equal(C.relatorios(st,null,null,'envio').total,3);
 assert.equal(C.relatorios(st,null,null,'envio').oradores[0].nome,'Ana');
 assert.equal(C.relatorios(st,null,null,'envio').oradores[0].count,2);
+// Congregation rankings exclude home and count the partner in each direction.
+for (const tipo of ['local','envio','todos']) {
+  assert.ok(!C.relatorios(st,null,null,tipo).congs.some(c => C.key(c.nome) === C.key(st.config.local)));
+}
+assert.deepEqual(C.relatorios(st,null,null,'envio').congs.map(c => [c.nome,c.count]),[['Norte',2],['Sul',1]]);
+assert.ok(C.relatorios(st,null,null,'local').congs.every(c => c.count === 0));
+const parceiros = {...st, config:{...st.config,local:' central '}, prog:[
+  {...entry('r1',1,'Visitante','local','Central'),origem:'Norte'},
+  {...entry('r2',2,'Visitante','local','Central'),origem:'Norte'},
+  {...entry('r3',3,'Visitante','local','Central'),origem:'Sul'},
+  entry('r4',4,'Ana','envio','Sul'),entry('r5',5,'Beto','local','Central')
+]};
+assert.deepEqual(C.relatorios(parceiros,null,null,'local').congs.map(c => [c.nome,c.count,c.pos]),[['Norte',2,1],['Sul',1,2]]);
+assert.deepEqual(C.relatorios(parceiros,null,null,'envio').congs.map(c => [c.nome,c.count]),[['Sul',1],['Norte',0]]);
+assert.equal(C.relatorios(parceiros,null,null,'local').total,4);
+assert.deepEqual(C.relatorios(parceiros,D.iso(today+3),D.iso(today+4),'local').congs.map(c => [c.nome,c.count]),[['Sul',1],['Norte',0]]);
+assert.deepEqual(C.relatorios(parceiros,null,null,'todos').congs.map(c => [c.nome,c.count]),[['Norte',2],['Sul',2]]);
 assert.equal(C.historico(st,'o','Ana',today,'envio').total,2);
 assert.equal(C.historico(st,'o','Ana',today,'local').total,1);
 assert.equal(C.historico(st,'o','Ana',today).total,3);

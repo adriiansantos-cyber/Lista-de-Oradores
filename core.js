@@ -213,7 +213,11 @@
     const lo = iniISO ? D.parse(iniISO) : -1e9, hi = fimISO ? D.parse(fimISO) : 1e9;
     const R = rows(st).filter(r => r.d >= lo && r.d <= hi && (modalidade === 'todos' || r.tipo === modalidade));
     const oradores = ranking(st.oradores.map(o => ({ nome: o.nome, cong: o.cong, count: R.filter(r => key(r.orador) === key(o.nome)).length })));
-    const congs = ranking(allCongs(st).map(c => ({ nome: c, count: R.filter(r => participa(r, c)).length })));
+    // Ranking de parceiras: origem nos recebimentos, destino nos envios.
+    const congs = ranking(allCongs(st).filter(c => key(c) !== key(st.config.local)).map(c => ({
+      nome: c,
+      count: R.filter(r => key(r.tipo === 'envio' ? r.destino : r.origem) === key(c)).length
+    })));
     const esbocos = ranking(st.esbocos.map(e => ({ n: e.n, tema: norm(e.tema), count: R.filter(r => Number(r.esboco) === e.n).length })));
     return { total: R.length, oradores, congs, esbocos };
   }
