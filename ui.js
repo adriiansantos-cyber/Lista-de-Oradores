@@ -67,22 +67,26 @@ function paletteFor(kind) { const value = st.config[kind + 'Palette']; return Ob
 function paletteSettings() {
   return '<div class="card"><h3>Cores da tela inicial</h3><p class="sub">Escolha as cores dos cards e botões de cada seção.</p>' + [['local','Discursos locais'],['envio','Envios']].map(([kind,label]) => '<div class="field"><label>' + label + '</label><select data-chg="palette" data-kind="' + kind + '">' + Object.entries(PALETTES).map(([id,p]) => '<option value="' + id + '" ' + (paletteFor(kind) === id ? 'selected' : '') + '>' + p[0] + '</option>').join('') + '</select><div class="palette-preview theme-' + paletteFor(kind) + '">Prévia · ' + label + '</div></div>').join('') + '</div>';
 }
+function speakerHeading(p) {
+  const nome = p.orador || 'Orador a definir', congregacao = p.orador ? C.origemDe(st, p) : '';
+  return esc(nome) + (congregacao ? ' • ' + esc(congregacao) : '');
+}
 function nextCard(label, p, empty) {
-  return '<div class="hero next-card"><small>' + label + '</small>' + (p ? '<b>' + esc(p.orador || 'Orador a definir') + '</b><div>' + D.brFull(p.d) + ' · ' + esc(p.destino || st.config.local || 'Congregação local') + '</div><div class="next-topic">' + (p.esboco ? 'Nº ' + p.esboco + ' · ' + esc(C.temaDe(st, p.esboco) || 'Tema a definir') : 'Tema a definir') + '</div>' : '<b>' + empty + '</b><div>Novos agendamentos aparecerão aqui.</div>') + '</div>';
+  return '<div class="hero next-card"><small>' + label + '</small>' + (p ? '<b>' + speakerHeading(p) + '</b><div>' + D.brFull(p.d) + ' · ' + esc(p.destino || st.config.local || 'Congregação local') + '</div><div class="next-topic">' + (p.esboco ? 'Nº ' + p.esboco + ' · ' + esc(C.temaDe(st, p.esboco) || 'Tema a definir') : 'Tema a definir') + '</div>' : '<b>' + empty + '</b><div>Novos agendamentos aparecerão aqui.</div>') + '</div>';
 }
 function matchesSearch(text, query) { return C.searchKey(query).split(/\s+/).filter(Boolean).every(w => C.searchKey(text).includes(w)); }
 function sortSelect(value,action,options) { return '<div class="field"><label>Ordenar por</label><select data-chg="' + action + '">' + options.map(([v,t]) => '<option value="' + v + '" ' + (value === v ? 'selected' : '') + '>' + t + '</option>').join('') + '</select></div>'; }
 function searchSort(query,order,search,sort,options) { return '<div class="row"><div class="field"><label>Buscar</label><input type="search" value="' + esc(query) + '" data-inp="' + search + '" placeholder="Nome, congregação, tema ou data"></div>' + sortSelect(order,sort,options) + '</div>'; }
 function searchInput(el, object, prop) { const start = el.selectionStart; object[prop] = el.value; render(); const input = document.querySelector('[data-inp="' + el.dataset.inp + '"]'); input?.focus?.(); if (typeof start === 'number') input?.setSelectionRange?.(start,start); }
 
-function itemProg(r) {
+function itemProg(r, withCongregation = false) {
   const al = C.alerta(st, r), f = C.faltas(r); let chips = '<span class="chip">' + (r.tipo === 'envio' ? 'Envio' : 'Local') + ' · ' + esc(r.origem || 'origem a definir') + ' → ' + esc(r.destino || 'congregação local') + '</span>';
   if (al.conflito) chips += '<span class="chip bad">Conflito de agenda no mesmo dia</span>';
   if (al.any) chips += '<span class="chip bad">⚠ repetição' + (al.orador ? ' de orador' : '') + (al.esboco ? ' de esboço' : '') + '</span>';
   if (r.tipo !== 'envio') chips += f.includes('confirmação') ? (r.pedido ? '<span class="chip">pedido enviado em ' + D.br(D.parse(r.pedido)) + '</span>' : '<span class="chip warn">sem confirmação</span>') : '<span class="chip ok">confirmado</span>';
   if (f.includes('cântico')) chips += '<span class="chip warn">sem cântico</span>'; else chips += '<span class="chip">cântico ' + esc(r.cantico) + '</span>';
   if (f.includes('imagens')) chips += '<span class="chip warn">imagens?</span>'; else chips += '<span class="chip">imagens ' + esc(r.imagens) + '</span>';
-  return '<div class="item" data-act="editProg" data-id="' + r.id + '" aria-label="' + esc(D.brFull(r.d) + ' · ' + (r.orador || 'Orador a definir')) + '"><div class="d"><b>' + D.br(r.d).slice(0, 2) + '</b><small>' + D.dow3(r.d) + '</small></div><div class="m"><b>' + esc(r.orador || 'Orador a definir') + '</b><div>' + esc(r.cong || '') + (r.esboco ? ' · Nº ' + r.esboco + ': ' + esc(C.temaDe(st, r.esboco)) : ' · tema a definir') + '</div>' + chips + '</div></div>';
+  return '<div class="item" data-act="editProg" data-id="' + r.id + '" aria-label="' + esc(D.brFull(r.d) + ' · ' + (r.orador || 'Orador a definir')) + '"><div class="d"><b>' + D.br(r.d).slice(0, 2) + '</b><small>' + D.dow3(r.d) + '</small></div><div class="m"><b>' + (withCongregation === true ? speakerHeading(r) : esc(r.orador || 'Orador a definir')) + '</b><div>' + (withCongregation === true ? '' : esc(r.cong || '')) + (r.esboco ? (withCongregation === true ? 'Nº ' : ' · Nº ') + r.esboco + ': ' + esc(C.temaDe(st, r.esboco)) : (withCongregation === true ? 'Tema a definir' : ' · tema a definir')) + '</div>' + chips + '</div></div>';
 }
 const V = {};
 V.busca = () => {
@@ -105,11 +109,11 @@ V.inicio = () => {
   const hoje = C.rows(st).filter(r => r.d === t), locaisHoje = hoje.filter(r => r.tipo !== 'envio').length;
   h += '<div class="welcome"><span>Olá! 👋</span><h2>Temos algum agendamento para hoje?</h2><p>' + (hoje.length ? locaisHoje + ' na congregação local · ' + (hoje.length - locaisHoje) + ' envios para outras congregações.' : 'Hoje não há discursos agendados. Vamos organizar os próximos?') + '</p></div>';
   h += '<section class="home-section theme-' + paletteFor('local') + '" aria-label="Discursos locais"><div class="sec">Na congregação local</div>' + nextCard('Próximo discurso local', p, 'Nenhum discurso local agendado');
-  if (proximosLocais.length) h += '<div class="sec">Próximos discursos locais</div>' + proximosLocais.slice(0,3).map(itemProg).join('');
+  if (proximosLocais.length) h += '<div class="sec">Próximos discursos locais</div>' + proximosLocais.slice(0,3).map(r => itemProg(r, true)).join('');
   h += '<div class="kpis"><div class="kpi"><b>' + k.discursosAno + '</b><span>Discursos locais em ' + D.year(t) + '</span></div><div class="kpi"><b>' + k.livres8 + '</b><span>Datas locais livres em 8 semanas</span></div></div><div class="row home-actions"><button class="btn primary" data-act="newProg">Agendar local</button><button class="btn" data-go="escalar">Quem escalar</button><button class="btn" data-act="verLocais">Ver programação local</button><button class="btn" data-go="pend">Pendências</button></div></section>';
   const e = proximosEnvios[0];
   h += '<section class="home-section theme-' + paletteFor('envio') + '" aria-label="Envios"><div class="sec">Oradores locais em outras congregações</div>' + nextCard('Próximo envio', e, 'Nenhum envio agendado');
-  if (proximosEnvios.length) h += '<div class="sec">Próximos envios</div>' + proximosEnvios.slice(0,3).map(itemProg).join('');
+  if (proximosEnvios.length) h += '<div class="sec">Próximos envios</div>' + proximosEnvios.slice(0,3).map(r => itemProg(r, true)).join('');
   h += '<div class="kpis"><div class="kpi"><b>' + proximosEnvios.length + '</b><span>Envios futuros</span></div><div class="kpi"><b>' + envios.filter(r => D.year(r.d) === D.year(t)).length + '</b><span>Envios em ' + D.year(t) + '</span></div></div><div class="row home-actions"><button class="btn primary" data-act="newEnvio">Agendar envio</button><button class="btn" data-go="arranjos">Ver arranjos</button><button class="btn" data-act="verEnvios">Ver todos os envios</button><button class="btn" data-act="compEnvios">Compartilhar envios</button></div>';
   h += '</section>';
   const cf = C.confirmacoes(st, t, st.config.diasPendencias || 30);
@@ -173,7 +177,7 @@ V.pend = () => {
   if (!P.lista.length) return h + '<div class="empty">Tudo certo nesse período. 🎉</div>';
   P.lista.forEach(r => {
     const confirma = r.tipo !== 'envio' && r.faltas.includes('confirmação') && r.orador;
-    h += '<article class="card pend-card"><div class="pend-heading"><span>' + esc(D.brFull(r.d)) + (r.hora ? ' · ' + esc(r.hora) : '') + '</span><span class="sub">' + (r.faltam === 0 ? 'Hoje' : 'Em ' + fmtDias(r.faltam)) + '</span></div><h3>' + esc(r.orador || 'Orador a definir') + '</h3><p class="sub">' + (r.tipo === 'envio' ? 'Envio para ' : 'Local · ') + esc(r.destino || 'congregação local') + '</p><div class="pend-status">' + r.faltas.map(x => '<span class="chip warn">' + ({'confirmação':'A confirmar','cântico':'Cântico a definir','imagens':'Imagens a definir'}[x] || esc(x)) + '</span>').join('') + '</div>' + (confirma && r.pedido ? '<p class="sub pend-request">Solicitação registrada em ' + D.brFull(D.parse(r.pedido)) + ' · aguardando resposta</p>' : '') + '<div class="pend-actions">' + (confirma ? '<button class="btn primary" data-act="msg" data-id="' + r.id + '">' + svg('message') + (r.pedido ? 'Solicitar novamente' : 'Solicitar') + '</button><button class="btn" data-act="confirmar" data-id="' + r.id + '">' + svg('check') + 'Confirmar</button>' : '') + '<button class="btn quiet" data-act="editProg" data-id="' + r.id + '">Ver detalhes</button></div></article>';
+    h += '<article class="card pend-card"><div class="pend-heading"><span>' + esc(D.brFull(r.d)) + (r.hora ? ' · ' + esc(r.hora) : '') + '</span><span class="sub">' + (r.faltam === 0 ? 'Hoje' : 'Em ' + fmtDias(r.faltam)) + '</span></div><h3>' + speakerHeading(r) + '</h3><p class="sub">' + (r.tipo === 'envio' ? 'Envio para ' : 'Local · ') + esc(r.destino || 'congregação local') + '</p><div class="pend-status">' + r.faltas.map(x => '<span class="chip warn">' + ({'confirmação':'A confirmar','cântico':'Cântico a definir','imagens':'Imagens a definir'}[x] || esc(x)) + '</span>').join('') + '</div>' + (confirma && r.pedido ? '<p class="sub pend-request">Solicitação registrada em ' + D.brFull(D.parse(r.pedido)) + ' · aguardando resposta</p>' : '') + '<div class="pend-actions">' + (confirma ? '<button class="btn primary" data-act="msg" data-id="' + r.id + '">' + svg('message') + (r.pedido ? 'Solicitar novamente' : 'Solicitar') + '</button><button class="btn" data-act="confirmar" data-id="' + r.id + '">' + svg('check') + 'Confirmar</button>' : '') + '<button class="btn quiet" data-act="editProg" data-id="' + r.id + '">Ver detalhes</button></div></article>';
   });
   return h;
 };
